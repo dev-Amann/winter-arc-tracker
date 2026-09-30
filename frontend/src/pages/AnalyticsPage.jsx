@@ -12,13 +12,18 @@ import {
   PieChart as PieIcon, 
   Flame, 
   ArrowUpRight, 
-  ArrowDownRight 
+  ArrowDownRight,
+  Activity,
+  Layers,
+  Award
 } from 'lucide-react';
 import { 
   BarChart, 
   Bar, 
   LineChart, 
   Line, 
+  AreaChart,
+  Area,
   PieChart, 
   Pie, 
   XAxis, 
@@ -26,8 +31,11 @@ import {
   Tooltip, 
   ResponsiveContainer, 
   Cell, 
-  CartesianGrid 
+  CartesianGrid,
+  Legend
 } from 'recharts';
+
+const GOAL_COLORS = ['#06B6D4', '#3B82F6', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6', '#F43F5E'];
 
 const AnalyticsPage = () => {
   const [activeTab, setActiveTab] = useState('charts'); // 'charts' or 'comparison'
@@ -72,7 +80,7 @@ const AnalyticsPage = () => {
             <BarChart3 className="w-7 h-7 text-cyan-400" />
             ANALYTICS & PERFORMANCE INSIGHTS
           </h2>
-          <p className="text-xs text-slate-400 mt-1">Objective data visualizations and trend analysis</p>
+          <p className="text-xs text-slate-400 mt-1">Vibrant multi-dimensional charts, trends, and comparative metrics</p>
         </div>
 
         {/* View Switcher Tabs */}
@@ -83,7 +91,7 @@ const AnalyticsPage = () => {
               activeTab === 'charts' ? 'bg-cyan-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
             }`}
           >
-            Charts & Trends
+            Charts & Visualizations
           </button>
 
           <button
@@ -101,7 +109,10 @@ const AnalyticsPage = () => {
         <div className="space-y-8">
           {/* Timeframe Filter Bar */}
           <div className="flex items-center justify-between glass-card p-4 rounded-2xl border border-slate-800">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Date Scope</span>
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              Timeframe Filter
+            </span>
             <div className="flex items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
               {['day', 'week', 'month', 'quarter', 'year'].map((tf) => (
                 <button
@@ -119,65 +130,87 @@ const AnalyticsPage = () => {
             </div>
           </div>
 
-          {/* Row 1: Planned vs Actual Bar Chart & Monthly Achievement Line Chart */}
+          {/* Row 1: Planned vs Actual Bar Chart & Monthly Achievement Area Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Chart 1: Planned vs Actual Bar Chart */}
+            {/* Chart 1: Planned vs Actual Multi-Color Bar Chart */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-cyan-400" />
-                1. Planned vs Actual Bar Chart
-              </h3>
-              <div className="h-64 w-full">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-cyan-400" />
+                  1. Planned vs Actual Target Comparison
+                </h3>
+                <span className="text-[10px] text-slate-400 font-semibold uppercase bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                  Target vs Performance
+                </span>
+              </div>
+              <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={pvData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="label" stroke="#64748B" fontSize={11} />
                     <YAxis stroke="#64748B" fontSize={11} />
                     <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
-                    <Bar dataKey="target" fill="#38BDF8" name="Planned" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="actual" fill="#10B981" name="Actual" radius={[4, 4, 0, 0]} />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    <Bar dataKey="target" fill="#38BDF8" name="Planned Target" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey="actual" fill="#10B981" name="Actual Performance" radius={[6, 6, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
             </div>
 
-            {/* Chart 2: Monthly Achievement Line Chart */}
+            {/* Chart 2: Monthly Achievement Area Chart with Gradient */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <TrendingUp className="w-5 h-5 text-emerald-400" />
-                2. Monthly Achievement Trend Line
-              </h3>
-              <div className="h-64 w-full">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-emerald-400" />
+                  2. 12-Month Achievement Trend Area Chart
+                </h3>
+                <span className="text-[10px] text-emerald-400 font-semibold uppercase bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                  Percentage Curve
+                </span>
+              </div>
+              <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={monthlyData}>
+                  <AreaChart data={monthlyData}>
+                    <defs>
+                      <linearGradient id="achieveGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.6}/>
+                        <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.0}/>
+                      </linearGradient>
+                    </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="month_name" stroke="#64748B" fontSize={11} />
                     <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} />
                     <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
-                    <Line type="monotone" dataKey="achievement_pct" stroke="#06B6D4" strokeWidth={3} dot={{ fill: '#06B6D4', r: 5 }} name="Achievement %" />
-                  </LineChart>
+                    <Area type="monotone" dataKey="achievement_pct" stroke="#06B6D4" strokeWidth={3} fillOpacity={1} fill="url(#achieveGrad)" name="Achievement %" dot={{ fill: '#06B6D4', r: 4 }} />
+                  </AreaChart>
                 </ResponsiveContainer>
               </div>
             </div>
           </div>
 
-          {/* Row 2: Category Performance Radar/Pie & Habit Consistency */}
+          {/* Row 2: Category Performance Breakdown & Monthly Goals Completed vs Missed */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Chart 3: Category Performance */}
+            {/* Chart 3: Category Performance Multi-Color Breakdown */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <PieIcon className="w-5 h-5 text-purple-400" />
-                3. Category Performance Breakdown
-              </h3>
-              <div className="h-64 w-full flex items-center justify-center">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <PieIcon className="w-5 h-5 text-purple-400" />
+                  3. Category Performance & Habit Count
+                </h3>
+                <span className="text-[10px] text-purple-400 font-semibold uppercase bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-500/20">
+                  By Category
+                </span>
+              </div>
+              <div className="h-72 w-full flex items-center justify-center">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={catData} layout="vertical">
+                  <BarChart data={catData} layout="vertical" margin={{ left: 10, right: 20 }}>
                     <XAxis type="number" domain={[0, 100]} stroke="#64748B" fontSize={11} />
-                    <YAxis dataKey="category_name" type="category" stroke="#64748B" fontSize={11} width={100} />
+                    <YAxis dataKey="category_name" type="category" stroke="#64748B" fontSize={11} width={110} />
                     <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
-                    <Bar dataKey="avg_achievement_pct" radius={[0, 6, 6, 0]}>
+                    <Bar dataKey="avg_achievement_pct" name="Average Achievement %" radius={[0, 6, 6, 0]}>
                       {catData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color || '#3B82F6'} />
+                        <Cell key={`cell-${index}`} fill={entry.color || GOAL_COLORS[index % GOAL_COLORS.length]} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -185,21 +218,84 @@ const AnalyticsPage = () => {
               </div>
             </div>
 
-            {/* Chart 4: Goal & Daily Completion Chart */}
+            {/* Chart 4: Monthly Goals Completed vs Missed Stacked Bar Chart */}
             <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-amber-400" />
-                4. Monthly Goals Completed vs Missed
-              </h3>
-              <div className="h-64 w-full">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-amber-400" />
+                  4. Monthly Completed vs Missed Goals
+                </h3>
+                <span className="text-[10px] text-amber-400 font-semibold uppercase bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                  Consistency Volume
+                </span>
+              </div>
+              <div className="h-72 w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="month_name" stroke="#64748B" fontSize={11} />
                     <YAxis stroke="#64748B" fontSize={11} />
                     <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
                     <Bar dataKey="completed_goals" fill="#10B981" name="Completed Goals" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="missed_goals" fill="#F43F5E" name="Missed Goals" stackId="a" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="missed_goals" fill="#F43F5E" name="Missed Goals" stackId="a" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          </div>
+
+          {/* Row 3: Cumulative Hours Growth & Habit Success Rates */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Chart 5: Planned vs Actual Hours Dual Line Chart */}
+            <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-rose-400" />
+                  5. Planned vs Actual Volume (Hours / Units)
+                </h3>
+                <span className="text-[10px] text-rose-400 font-semibold uppercase bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                  Execution Volume
+                </span>
+              </div>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="month_name" stroke="#64748B" fontSize={11} />
+                    <YAxis stroke="#64748B" fontSize={11} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
+                    <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '8px' }} />
+                    <Line type="monotone" dataKey="planned" stroke="#38BDF8" strokeWidth={2.5} name="Planned Target" dot={{ fill: '#38BDF8', r: 3 }} />
+                    <Line type="monotone" dataKey="actual" stroke="#10B981" strokeWidth={2.5} name="Actual Recorded" dot={{ fill: '#10B981', r: 3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Chart 6: Average Daily Completion Rate by Month */}
+            <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Award className="w-5 h-5 text-cyan-400" />
+                  6. Average Daily Completion Rate Across Months
+                </h3>
+                <span className="text-[10px] text-cyan-400 font-semibold uppercase bg-cyan-500/10 px-2 py-0.5 rounded-md border border-cyan-500/20">
+                  Consistency %
+                </span>
+              </div>
+              <div className="h-72 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis dataKey="month_name" stroke="#64748B" fontSize={11} />
+                    <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} />
+                    <Tooltip contentStyle={{ backgroundColor: '#1E293B', borderColor: '#334155', borderRadius: '12px' }} />
+                    <Bar dataKey="avg_daily_completion" fill="#6366F1" name="Avg Daily Completion %" radius={[6, 6, 0, 0]}>
+                      {monthlyData.map((entry, index) => (
+                        <Cell key={`bar-${index}`} fill={entry.avg_daily_completion >= 80 ? '#10B981' : entry.avg_daily_completion >= 50 ? '#06B6D4' : '#6366F1'} />
+                      ))}
+                    </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               </div>

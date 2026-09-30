@@ -1,22 +1,21 @@
 from datetime import date, timedelta
 from typing import List, Dict, Any, Optional
 
-def calculate_achievement(target: float, actual: float, goal_direction: str = "higher_is_better") -> float:
+def calculate_achievement(target: float, actual: float, goal_direction: str = "higher_is_better", status: Optional[str] = None) -> float:
     """
     Centralized achievement calculation.
-    
-    Higher is better:
-        - Target = 2h, Actual = 1.5h -> 75%
-        - Target = 2h, Actual = 3.0h -> 150%
-    
-    Lower is better:
-        - Target = 60m (max), Actual = 45m -> 100%
-        - Target = 60m (max), Actual = 90m -> (60 / 90) * 100 = 66.67%
+    If status is explicitly 'missed', achievement is always 0.0%.
     """
+    if status == "missed":
+        return 0.0
+
     target = float(target)
     actual = float(actual)
     
     if goal_direction == "lower_is_better":
+        # If user did 0 but marked it missed, it's 0%
+        if status == "missed":
+            return 0.0
         if actual <= target:
             return 100.0
         if actual <= 0:
@@ -28,7 +27,7 @@ def calculate_achievement(target: float, actual: float, goal_direction: str = "h
         return round((actual / target) * 100.0, 2)
 
 
-def determine_status(achievement_pct: float) -> str:
+def determine_status(achievement_pct: float, actual_val: float = 0.0) -> str:
     """
     Determine completion status based on achievement percentage.
     """

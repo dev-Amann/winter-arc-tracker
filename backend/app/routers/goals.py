@@ -56,12 +56,14 @@ DEFAULT_SAMPLE_GOALS = [
 ]
 
 def seed_sample_goals_if_empty(db: Session):
+    from app.routers.categories import seed_categories_if_empty
+    seed_categories_if_empty(db)
     if db.query(Goal).count() == 0:
         for g_data in DEFAULT_SAMPLE_GOALS:
-            cat_name = g_data.pop("category_name")
+            cat_name = g_data.get("category_name")
             cat = db.query(Category).filter(Category.name == cat_name).first()
-            category_id = cat.id if cat else None
-            goal = Goal(**g_data, category_id=category_id, is_active=True)
+            data = {k: v for k, v in g_data.items() if k != "category_name"}
+            goal = Goal(**data, category_id=cat.id if cat else None, is_active=True)
             db.add(goal)
         db.commit()
 

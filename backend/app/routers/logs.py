@@ -81,6 +81,10 @@ def create_or_update_log(log_input: GoalLogCreate, db: Session = Depends(get_db)
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 
+    today = date.today()
+    if log_input.log_date > today and (log_input.status in ("complete", "partial") or (log_input.actual_value and log_input.actual_value > 0)):
+        raise HTTPException(status_code=400, detail="Cannot mark future dates as completed or partial. Performance can only be recorded on or before today.")
+
     target_val = log_input.target_value if log_input.target_value is not None else goal.target_value
     
     # Consistent status handling: if missed, actual is 0 and achievement is 0
@@ -128,6 +132,12 @@ def create_or_update_log(log_input: GoalLogCreate, db: Session = Depends(get_db)
 
 @router.post("/batch", response_model=List[GoalLogResponse])
 def batch_upsert_logs(batch: GoalLogBatchCreate, db: Session = Depends(get_db)):
+    today = date.today()
+    if batch.log_date > today:
+        for item in batch.logs:
+            if item.status in ("complete", "partial") or (item.actual_value and item.actual_value > 0):
+                raise HTTPException(status_code=400, detail="Cannot mark future dates as completed or partial. Performance can only be recorded on or before today.")
+
     updated_logs = []
     for item in batch.logs:
         goal = db.query(Goal).filter(Goal.id == item.goal_id).first()

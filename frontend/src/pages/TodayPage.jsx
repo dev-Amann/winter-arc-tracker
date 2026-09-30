@@ -57,10 +57,15 @@ const TodayPage = () => {
     loadData();
   }, [selectedDate]);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isFutureDate = selectedDate > todayStr;
+
   const handleDateChange = (daysOffset) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + daysOffset);
-    setSelectedDate(d.toISOString().split('T')[0]);
+    const newStr = d.toISOString().split('T')[0];
+    if (daysOffset > 0 && newStr > todayStr) return; // Prevent going beyond today
+    setSelectedDate(newStr);
   };
 
   const handleInputChange = (goalId, field, value) => {
@@ -122,19 +127,32 @@ const TodayPage = () => {
           
           <input 
             type="date"
+            max={todayStr}
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(e) => {
+              if (e.target.value > todayStr) return;
+              setSelectedDate(e.target.value);
+            }}
             className="bg-transparent text-white font-bold text-sm focus:outline-none px-2 cursor-pointer"
           />
 
           <button 
             onClick={() => handleDateChange(1)} 
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+            disabled={selectedDate >= todayStr}
+            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-30 disabled:hover:bg-transparent rounded-xl transition-colors"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+      {/* Future Date Alert */}
+      {isFutureDate && (
+        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-amber-400 text-xs font-semibold flex items-center gap-2">
+          <AlertCircle className="w-5 h-5 shrink-0" />
+          Future dates cannot be marked as complete or partial. Performance can only be logged for today or past days.
+        </div>
+      )}
 
       {/* Success Notification Alert */}
       {successMessage && (
@@ -183,11 +201,12 @@ const TodayPage = () => {
                 {/* Status Selector Buttons */}
                 <div className="flex items-center gap-2">
                   <button
+                    disabled={isFutureDate}
                     onClick={() => {
                       handleInputChange(g.id, 'status', 'complete');
                       handleInputChange(g.id, 'actual_value', g.target_value);
                     }}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
                       logData.status === 'complete'
                         ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
                         : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
@@ -197,11 +216,12 @@ const TodayPage = () => {
                   </button>
 
                   <button
+                    disabled={isFutureDate}
                     onClick={() => {
                       handleInputChange(g.id, 'status', 'partial');
                       handleInputChange(g.id, 'actual_value', Math.round((g.target_value / 2) * 10) / 10);
                     }}
-                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${
                       logData.status === 'partial'
                         ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
                         : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'

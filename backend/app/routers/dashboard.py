@@ -88,8 +88,11 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     wa_start = date.fromisoformat(wa_start_setting.value) if wa_start_setting and wa_start_setting.value else date(2026, 10, 1)
     wa_end = date.fromisoformat(wa_end_setting.value) if wa_end_setting and wa_end_setting.value else date(2026, 12, 31)
 
-    wa_pcts = [pct for d, pct in daily_avg_by_date.items() if wa_start <= d <= wa_end]
-    overall_winter_arc_pct = round(sum(wa_pcts) / len(wa_pcts), 1) if wa_pcts else 0.0
+    if today < wa_start:
+        overall_winter_arc_pct = 0.0
+    else:
+        wa_pcts = [pct for d, pct in daily_avg_by_date.items() if wa_start <= d <= min(today, wa_end)]
+        overall_winter_arc_pct = round(sum(wa_pcts) / len(wa_pcts), 1) if wa_pcts else 0.0
 
     overall_ach_pct = round((total_actual_hours / total_planned_hours) * 100.0, 1) if total_planned_hours > 0 else 0.0
 
