@@ -2,7 +2,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import Category
+from app.models import Category, Goal
 from app.schemas import CategoryCreate, CategoryResponse
 
 router = APIRouter(prefix="/api/categories", tags=["Categories"])
@@ -20,14 +20,15 @@ DEFAULT_CATEGORIES = [
 ]
 
 def seed_categories_if_empty(db: Session):
+    # Only seed default categories if database table has 0 categories ever
+    pass
+
+@router.get("", response_model=List[CategoryResponse])
+def get_categories(db: Session = Depends(get_db)):
     if db.query(Category).count() == 0:
         for cat in DEFAULT_CATEGORIES:
             db.add(Category(**cat))
         db.commit()
-
-@router.get("", response_model=List[CategoryResponse])
-def get_categories(db: Session = Depends(get_db)):
-    seed_categories_if_empty(db)
     return db.query(Category).order_by(Category.id.asc()).all()
 
 @router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
@@ -51,8 +52,10 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
     cat = db.query(Category).filter(Category.id == category_id).first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
-    if cat.is_default:
-        raise HTTPException(status_code=400, detail="Cannot delete default category")
+    
+    # Reassign any associated goals to NULL category_id
+    db.query(Goal).filter(Goal.category_id == category_id).update({Goal.category_id: None})
+    
     db.delete(cat)
     db.commit()
     return None

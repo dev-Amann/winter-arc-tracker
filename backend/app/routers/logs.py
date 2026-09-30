@@ -82,8 +82,20 @@ def create_or_update_log(log_input: GoalLogCreate, db: Session = Depends(get_db)
         raise HTTPException(status_code=404, detail="Goal not found")
 
     target_val = log_input.target_value if log_input.target_value is not None else goal.target_value
-    ach_pct = calculate_achievement(target_val, log_input.actual_value, goal.goal_direction)
-    log_status = log_input.status or determine_status(ach_pct)
+    
+    # Consistent status handling: if missed, actual is 0 and achievement is 0
+    if log_input.status == "missed" or (log_input.actual_value <= 0 and log_input.status != "complete"):
+        actual_val = 0.0
+        ach_pct = 0.0
+        log_status = "missed"
+    elif log_input.status == "complete":
+        actual_val = log_input.actual_value if log_input.actual_value > 0 else target_val
+        ach_pct = calculate_achievement(target_val, actual_val, goal.goal_direction)
+        log_status = "complete"
+    else:
+        actual_val = log_input.actual_value
+        ach_pct = calculate_achievement(target_val, actual_val, goal.goal_direction)
+        log_status = log_input.status or determine_status(ach_pct)
 
     existing_log = db.query(GoalLog).filter(
         GoalLog.goal_id == log_input.goal_id,
@@ -92,7 +104,7 @@ def create_or_update_log(log_input: GoalLogCreate, db: Session = Depends(get_db)
 
     if existing_log:
         existing_log.target_value = target_val
-        existing_log.actual_value = log_input.actual_value
+        existing_log.actual_value = actual_val
         existing_log.status = log_status
         existing_log.notes = log_input.notes
         existing_log.achievement_pct = ach_pct
@@ -102,7 +114,7 @@ def create_or_update_log(log_input: GoalLogCreate, db: Session = Depends(get_db)
             goal_id=log_input.goal_id,
             log_date=log_input.log_date,
             target_value=target_val,
-            actual_value=log_input.actual_value,
+            actual_value=actual_val,
             status=log_status,
             notes=log_input.notes,
             achievement_pct=ach_pct
@@ -123,8 +135,20 @@ def batch_upsert_logs(batch: GoalLogBatchCreate, db: Session = Depends(get_db)):
             continue
 
         target_val = item.target_value if item.target_value is not None else goal.target_value
-        ach_pct = calculate_achievement(target_val, item.actual_value, goal.goal_direction)
-        log_status = item.status or determine_status(ach_pct)
+        
+        # Consistent status handling: if marked missed or value <= 0
+        if item.status == "missed" or (item.actual_value <= 0 and item.status != "complete"):
+            actual_val = 0.0
+            ach_pct = 0.0
+            log_status = "missed"
+        elif item.status == "complete":
+            actual_val = item.actual_value if item.actual_value > 0 else target_val
+            ach_pct = calculate_achievement(target_val, actual_val, goal.goal_direction)
+            log_status = "complete"
+        else:
+            actual_val = item.actual_value
+            ach_pct = calculate_achievement(target_val, actual_val, goal.goal_direction)
+            log_status = item.status or determine_status(ach_pct)
 
         existing = db.query(GoalLog).filter(
             GoalLog.goal_id == item.goal_id,
@@ -133,7 +157,7 @@ def batch_upsert_logs(batch: GoalLogBatchCreate, db: Session = Depends(get_db)):
 
         if existing:
             existing.target_value = target_val
-            existing.actual_value = item.actual_value
+            existing.actual_value = actual_val
             existing.status = log_status
             existing.notes = item.notes
             existing.achievement_pct = ach_pct
@@ -143,7 +167,7 @@ def batch_upsert_logs(batch: GoalLogBatchCreate, db: Session = Depends(get_db)):
                 goal_id=item.goal_id,
                 log_date=batch.log_date,
                 target_value=target_val,
-                actual_value=item.actual_value,
+                actual_value=actual_val,
                 status=log_status,
                 notes=item.notes,
                 achievement_pct=ach_pct

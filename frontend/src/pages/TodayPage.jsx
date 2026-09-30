@@ -183,7 +183,10 @@ const TodayPage = () => {
                 {/* Status Selector Buttons */}
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleInputChange(g.id, 'status', 'complete')}
+                    onClick={() => {
+                      handleInputChange(g.id, 'status', 'complete');
+                      handleInputChange(g.id, 'actual_value', g.target_value);
+                    }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       logData.status === 'complete'
                         ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
@@ -194,7 +197,10 @@ const TodayPage = () => {
                   </button>
 
                   <button
-                    onClick={() => handleInputChange(g.id, 'status', 'partial')}
+                    onClick={() => {
+                      handleInputChange(g.id, 'status', 'partial');
+                      handleInputChange(g.id, 'actual_value', Math.round((g.target_value / 2) * 10) / 10);
+                    }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       logData.status === 'partial'
                         ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/20'
@@ -205,7 +211,10 @@ const TodayPage = () => {
                   </button>
 
                   <button
-                    onClick={() => handleInputChange(g.id, 'status', 'missed')}
+                    onClick={() => {
+                      handleInputChange(g.id, 'status', 'missed');
+                      handleInputChange(g.id, 'actual_value', 0);
+                    }}
                     className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
                       logData.status === 'missed'
                         ? 'bg-rose-500 text-white shadow-lg shadow-rose-500/20'
@@ -229,7 +238,12 @@ const TodayPage = () => {
                       step="any"
                       min="0"
                       value={logData.actual_value}
-                      onChange={(e) => handleInputChange(g.id, 'actual_value', e.target.value)}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value) || 0;
+                        const st = val <= 0 ? 'missed' : (val >= g.target_value ? 'complete' : 'partial');
+                        handleInputChange(g.id, 'actual_value', e.target.value);
+                        handleInputChange(g.id, 'status', st);
+                      }}
                       className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white font-bold text-sm focus:outline-none focus:border-cyan-500"
                     />
                     <span className="text-xs text-slate-400 font-medium whitespace-nowrap">{g.unit}</span>

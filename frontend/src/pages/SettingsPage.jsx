@@ -169,14 +169,13 @@ const SettingsPage = () => {
                 <div className="w-3 h-3 rounded-full" style={{ backgroundColor: c.color }} />
                 <span className="text-xs font-bold text-white">{c.name}</span>
               </div>
-              {!c.is_default && (
-                <button 
-                  onClick={() => handleDeleteCategory(c.id)}
-                  className="p-1 text-slate-500 hover:text-rose-400"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              )}
+              <button 
+                onClick={() => handleDeleteCategory(c.id)}
+                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded p-1 transition-colors"
+                title="Delete Category"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
             </div>
           ))}
         </div>

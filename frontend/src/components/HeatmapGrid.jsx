@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
-const HeatmapGrid = ({ heatmapData, onSelectDay }) => {
+const HeatmapGrid = ({ heatmapData, onSelectDay, year, onYearChange }) => {
   const [hoveredDay, setHoveredDay] = useState(null);
+  const currentYear = year || new Date().getFullYear();
 
   // Map heatmap data array into a date lookup dictionary
   const dataByDate = {};
@@ -11,11 +13,9 @@ const HeatmapGrid = ({ heatmapData, onSelectDay }) => {
     });
   }
 
-  // Generate 365 days of current year or 52 weeks
-  const today = new Date();
-  const year = today.getFullYear();
-  const startDate = new Date(year, 0, 1);
-  const endDate = new Date(year, 11, 31);
+  // Generate all days of selected year
+  const startDate = new Date(currentYear, 0, 1);
+  const endDate = new Date(currentYear, 11, 31);
 
   const days = [];
   let curr = new Date(startDate);
@@ -40,13 +40,52 @@ const HeatmapGrid = ({ heatmapData, onSelectDay }) => {
   };
 
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  // Year selector list from 2020 through 2030
+  const yearOptions = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030];
 
   return (
     <div className="glass-card p-6 rounded-3xl border border-slate-800 relative overflow-visible">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-base font-bold text-white">ACTIVITY HEATMAP ({year})</h3>
-          <p className="text-xs text-slate-400">Completion intensity across days</p>
+      <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        {/* Title & Year Navigation Controls */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1.5 bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button
+              onClick={() => onYearChange && onYearChange(currentYear - 1)}
+              className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
+              title="Previous Year"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            <select
+              value={currentYear}
+              onChange={(e) => onYearChange && onYearChange(parseInt(e.target.value))}
+              className="bg-transparent text-white font-bold text-xs px-2 py-1 focus:outline-none cursor-pointer"
+            >
+              {yearOptions.map((yr) => (
+                <option key={yr} value={yr} className="bg-slate-900 text-white">
+                  {yr}
+                </option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => onYearChange && onYearChange(currentYear + 1)}
+              className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors"
+              title="Next Year"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div>
+            <h3 className="text-base font-bold text-white flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-cyan-400" />
+              ACTIVITY HEATMAP ({currentYear})
+            </h3>
+            <p className="text-xs text-slate-400">Past, current, and future performance across days</p>
+          </div>
         </div>
         
         {/* Color Legend */}
@@ -54,8 +93,8 @@ const HeatmapGrid = ({ heatmapData, onSelectDay }) => {
           <span>Less</span>
           <div className="w-3 h-3 rounded bg-slate-900 border border-slate-800" />
           <div className="w-3 h-3 rounded bg-cyan-950 border border-cyan-800" />
-          <div className="w-3 h-3 rounded bg-cyan-700/60 border border-cyan-600" />
-          <div className="w-3 h-3 rounded bg-cyan-500/80 border border-cyan-400" />
+          <div className="w-3 h-3 rounded bg-cyan-700/60 border-cyan-600" />
+          <div className="w-3 h-3 rounded bg-cyan-500/80 border-cyan-400" />
           <div className="w-3 h-3 rounded bg-cyan-400 border border-cyan-300" />
           <span>100%</span>
         </div>

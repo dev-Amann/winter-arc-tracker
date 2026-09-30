@@ -248,7 +248,12 @@ const DashboardPage = () => {
                           type="number"
                           step="any"
                           value={currentInput.actual_value}
-                          onChange={(e) => handleInputChange(log.goal_id, 'actual_value', e.target.value)}
+                          onChange={(e) => {
+                            const val = parseFloat(e.target.value) || 0;
+                            const newStatus = val <= 0 ? 'missed' : (val >= target ? 'complete' : 'partial');
+                            handleInputChange(log.goal_id, 'actual_value', e.target.value);
+                            handleInputChange(log.goal_id, 'status', newStatus);
+                          }}
                           className="w-24 bg-slate-800 border border-slate-700 rounded-lg px-2.5 py-1 text-white text-xs text-center font-bold focus:outline-none focus:border-cyan-500"
                         />
                         <span className="text-xs text-slate-400">{unit}</span>
@@ -257,7 +262,18 @@ const DashboardPage = () => {
                           {['complete', 'partial', 'missed'].map((st) => (
                             <button
                               key={st}
-                              onClick={() => handleInputChange(log.goal_id, 'status', st)}
+                              onClick={() => {
+                                let newActual = currentInput.actual_value;
+                                if (st === 'missed') {
+                                  newActual = 0;
+                                } else if (st === 'complete') {
+                                  newActual = target;
+                                } else if (st === 'partial') {
+                                  newActual = Math.round((target / 2) * 10) / 10;
+                                }
+                                handleInputChange(log.goal_id, 'status', st);
+                                handleInputChange(log.goal_id, 'actual_value', newActual);
+                              }}
                               className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold transition-all ${
                                 currentInput.status === st
                                   ? st === 'complete' ? 'bg-emerald-500 text-slate-950' : st === 'partial' ? 'bg-amber-500 text-slate-950' : 'bg-rose-500 text-white'

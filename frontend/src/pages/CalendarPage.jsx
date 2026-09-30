@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getMonthlyAnalytics, getCalendarHeatmap, getGoals, getCategories } from '../services/api';
 import HeatmapGrid from '../components/HeatmapGrid';
-import { CalendarDays, Calendar as CalendarIcon, Filter, Layers, CheckCircle2, AlertCircle } from 'lucide-react';
+import { CalendarDays, Calendar as CalendarIcon, Filter, Layers, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const CalendarPage = () => {
   const [activeView, setActiveView] = useState('heatmap'); // 'heatmap' or 'yearly'
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [monthlyData, setMonthlyData] = useState([]);
   const [heatmapData, setHeatmapData] = useState([]);
   const [goals, setGoals] = useState([]);
@@ -15,14 +16,15 @@ const CalendarPage = () => {
   const [selectedDayDetail, setSelectedDayDetail] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const yearOptions = [2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030];
+
   const loadCalendarData = async () => {
     try {
       setLoading(true);
-      const year = new Date().getFullYear();
       const [mRes, hRes, gRes, cRes] = await Promise.all([
-        getMonthlyAnalytics(year),
+        getMonthlyAnalytics(selectedYear),
         getCalendarHeatmap({
-          year,
+          year: selectedYear,
           goal_id: selectedGoal || undefined,
           category_id: selectedCategory || undefined
         }),
@@ -43,7 +45,7 @@ const CalendarPage = () => {
 
   useEffect(() => {
     loadCalendarData();
-  }, [selectedGoal, selectedCategory]);
+  }, [selectedYear, selectedGoal, selectedCategory]);
 
   return (
     <div className="flex-1 bg-slate-950 text-slate-100 p-8 max-w-7xl mx-auto w-full space-y-8">
@@ -54,7 +56,7 @@ const CalendarPage = () => {
             <CalendarDays className="w-7 h-7 text-cyan-400" />
             CALENDAR & ACTIVITY HEATMAP
           </h2>
-          <p className="text-xs text-slate-400 mt-1">Visualize consistent habits across months and days</p>
+          <p className="text-xs text-slate-400 mt-1">Visualize consistent habits across past, current, and future years</p>
         </div>
 
         {/* View Switcher */}
@@ -127,9 +129,11 @@ const CalendarPage = () => {
             </div>
           </div>
 
-          {/* GitHub-style Heatmap Grid */}
+          {/* GitHub-style Heatmap Grid with Year selection */}
           <HeatmapGrid 
             heatmapData={heatmapData} 
+            year={selectedYear}
+            onYearChange={setSelectedYear}
             onSelectDay={(dayStr) => {
               const matched = heatmapData.find(d => d.date === dayStr);
               setSelectedDayDetail(matched || { date: dayStr, planned: 0, actual: 0, achievement_pct: 0 });
@@ -174,9 +178,37 @@ const CalendarPage = () => {
       ) : (
         /* Full-Year Dashboard (12-Month Breakdown) */
         <div className="space-y-8">
+          {/* Year Switcher for Yearly View */}
+          <div className="glass-card p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Select Year</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSelectedYear(selectedYear - 1)}
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <select
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
+                className="bg-slate-900 border border-slate-800 rounded-xl px-4 py-1.5 text-xs font-bold text-white focus:outline-none"
+              >
+                {yearOptions.map((yr) => (
+                  <option key={yr} value={yr}>{yr}</option>
+                ))}
+              </select>
+              <button
+                onClick={() => setSelectedYear(selectedYear + 1)}
+                className="p-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+
           {/* Yearly Trendline */}
           <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-4">
-            <h3 className="text-lg font-bold text-white">YEARLY ACHIEVEMENT TRENDLINE</h3>
+            <h3 className="text-lg font-bold text-white">YEARLY ACHIEVEMENT TRENDLINE ({selectedYear})</h3>
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthlyData}>
