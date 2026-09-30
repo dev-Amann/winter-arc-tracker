@@ -1,0 +1,38 @@
+# Environment & Secrets (NEVER COMMIT PASSWORDS)
+.env
+.env.*
+!.env.example
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+winter_arc.db
+
+# Node dependencies & builds
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+*.local
+
+# Python cache & virtual environments
+__pycache__/
+*/__pycache__/
+*/*/__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.venv/
+
+# PyInstaller / Executable build artifacts
+desktop/build/
+desktop/dist/
+*.spec
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
