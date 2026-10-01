@@ -7,6 +7,7 @@ import HabitsPage from './pages/HabitsPage';
 import GoalsPage from './pages/GoalsPage';
 import AnalyticsPage from './pages/AnalyticsPage';
 import CalendarPage from './pages/CalendarPage';
+import MonthlySheetPage from './pages/MonthlySheetPage';
 import WinterArcPage from './pages/WinterArcPage';
 import SettingsPage from './pages/SettingsPage';
 
@@ -21,6 +22,7 @@ function App() {
             <Route path="/today" element={<TodayPage />} />
             <Route path="/habits" element={<HabitsPage />} />
             <Route path="/goals" element={<GoalsPage />} />
+            <Route path="/monthly-sheet" element={<MonthlySheetPage />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/winter-arc" element={<WinterArcPage />} />

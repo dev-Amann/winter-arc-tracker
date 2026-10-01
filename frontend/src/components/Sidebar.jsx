@@ -9,7 +9,8 @@ import {
   CalendarDays, 
   Flame, 
   Settings,
-  Snowflake
+  Snowflake,
+  TableProperties
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -20,6 +21,7 @@ const Sidebar = () => {
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Today', path: '/today', icon: CalendarCheck },
+    { name: 'Monthly Sheet', path: '/monthly-sheet', icon: TableProperties, badge: 'New' },
     { name: 'Habits', path: '/habits', icon: Repeat },
     { name: 'Goals', path: '/goals', icon: Target },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { getMonthlyAnalytics, getCalendarHeatmap, getGoals, getCategories } from '../services/api';
 import HeatmapGrid from '../components/HeatmapGrid';
-import { CalendarDays, Calendar as CalendarIcon, Filter, Layers, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { NavLink } from 'react-router-dom';
+import { CalendarDays, Calendar as CalendarIcon, Filter, Layers, CheckCircle2, AlertCircle, ChevronLeft, ChevronRight, TableProperties } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 
 const CalendarPage = () => {
@@ -61,6 +62,14 @@ const CalendarPage = () => {
 
         {/* View Switcher */}
         <div className="flex items-center gap-2 bg-slate-900 p-1.5 rounded-2xl border border-slate-800 text-xs font-bold">
+          <NavLink
+            to="/monthly-sheet"
+            className="px-4 py-2 rounded-xl transition-all text-cyan-400 hover:bg-slate-800 flex items-center gap-1.5"
+          >
+            <TableProperties className="w-3.5 h-3.5" />
+            Monthly Sheet
+          </NavLink>
+
           <button
             onClick={() => setActiveView('heatmap')}
             className={`px-4 py-2 rounded-xl transition-all ${

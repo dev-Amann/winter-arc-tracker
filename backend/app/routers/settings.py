@@ -28,6 +28,30 @@ def get_settings(db: Session = Depends(get_db)):
     settings = db.query(Setting).all()
     return {s.key: s.value for s in settings}
 
+import json
+
+@router.get("/reflections/{year}/{month}")
+def get_monthly_reflection(year: int, month: int, db: Session = Depends(get_db)):
+    key = f"reflection_{year}_{month:02d}"
+    s = db.query(Setting).filter(Setting.key == key).first()
+    if s and s.value:
+        try:
+            return json.loads(s.value)
+        except Exception:
+            return {"goal": s.value, "achieved": "", "improve": "", "athlete_name": "Aman"}
+    return {"goal": "", "achieved": "", "improve": "", "athlete_name": "Aman"}
+
+@router.put("/reflections/{year}/{month}")
+def save_monthly_reflection(year: int, month: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
+    key = f"reflection_{year}_{month:02d}"
+    s = db.query(Setting).filter(Setting.key == key).first()
+    val = json.dumps(payload)
+    if not s:
+        s = Setting(key=key, value=val)
+        db.add(s)
+    else:
+        s.value = val
+    db.commit()
 @router.put("/{key}")
 def update_setting(key: str, payload: SettingUpdate, db: Session = Depends(get_db)):
     setting = db.query(Setting).filter(Setting.key == key).first()
@@ -39,3 +63,4 @@ def update_setting(key: str, payload: SettingUpdate, db: Session = Depends(get_d
     db.commit()
     db.refresh(setting)
     return {"key": setting.key, "value": setting.value}
+

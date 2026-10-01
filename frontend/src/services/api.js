@@ -120,6 +120,16 @@ export const updateSetting = async (key, value) => {
   return response.data;
 };
 
+export const getMonthlyReflection = async (year, month) => {
+  const response = await api.get(`/settings/reflections/${year}/${month}`);
+  return response.data;
+};
+
+export const saveMonthlyReflection = async (year, month, data) => {
+  const response = await api.put(`/settings/reflections/${year}/${month}`, data);
+  return response.data;
+};
+
 export const importJsonData = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
