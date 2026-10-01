@@ -48,6 +48,10 @@ class Goal(Base):
     goal_direction = Column(String(20), default="higher_is_better")  # higher_is_better or lower_is_better
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
+    current_value = Column(Float, nullable=True, default=0.0)
+    status = Column(String(30), nullable=True, default="in_progress")  # in_progress, achieved, paused
+    linked_habit_ids = Column(String(255), nullable=True, default="")  # comma-separated habit IDs
+    description = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

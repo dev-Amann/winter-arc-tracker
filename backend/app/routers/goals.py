@@ -67,22 +67,6 @@ DEFAULT_SAMPLE_GOALS = [
 def seed_sample_goals_if_empty(db: Session):
     from app.routers.categories import seed_categories_if_empty
     seed_categories_if_empty(db)
-    # Ensure Sleep goal exists
-    sleep_goal = db.query(Goal).filter(Goal.name == "Sleep").first()
-    if not sleep_goal:
-        cat = db.query(Category).filter(Category.name == "Personal").first()
-        db.add(Goal(
-            name="Sleep",
-            category_id=cat.id if cat else None,
-            type="habit",
-            frequency="daily",
-            target_value=8.0,
-            unit="hours",
-            goal_direction="higher_is_better",
-            is_active=True
-        ))
-        db.commit()
-    
     if db.query(Goal).count() == 0:
         for g_data in DEFAULT_SAMPLE_GOALS:
             cat_name = g_data.get("category_name")
@@ -124,8 +108,12 @@ def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
         type=goal.type,
         frequency=goal.frequency,
         target_value=goal.target_value,
+        current_value=goal.current_value or 0.0,
         unit=goal.unit,
         goal_direction=goal.goal_direction,
+        status=goal.status or "in_progress",
+        linked_habit_ids=goal.linked_habit_ids or "",
+        description=goal.description,
         start_date=goal.start_date,
         end_date=goal.end_date,
         is_active=goal.is_active

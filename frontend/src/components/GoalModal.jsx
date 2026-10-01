@@ -50,7 +50,14 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
-    onSave(formData);
+    const cleanData = {
+      ...formData,
+      category_id: formData.category_id ? parseInt(formData.category_id) : null,
+      target_value: parseFloat(formData.target_value) || 1,
+      start_date: formData.start_date ? formData.start_date : null,
+      end_date: formData.end_date ? formData.end_date : null
+    };
+    onSave(cleanData);
     onClose();
   };
 

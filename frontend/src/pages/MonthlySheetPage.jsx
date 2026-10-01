@@ -54,8 +54,10 @@ const MonthlySheetPage = () => {
   const [logsMap, setLogsMap] = useState({}); // key: `${goalId}_${dateStr}`
   const [sleepMap, setSleepMap] = useState({}); // key: dateStr -> hours
   const [monthLogs, setMonthLogs] = useState([]);
+  const [selectedHabitId, setSelectedHabitId] = useState(null);
+  const [nameSavedStatus, setNameSavedStatus] = useState(false);
   const [reflections, setReflections] = useState({
-    athlete_name: 'Aman',
+    athlete_name: '',
     goal: '',
     achieved: '',
     improve: ''
@@ -229,39 +231,108 @@ const MonthlySheetPage = () => {
     }
   };
 
-  // Sleep Cell Click: ONLY allowed for TODAY
-  const handleSleepClick = async (hrs, dayNum) => {
+  // Handle Athlete Name Auto-save on blur
+  const handleNameBlur = async () => {
+    const trimmed = reflections.athlete_name?.trim() || 'Athlete';
+    try {
+      await saveMonthlyReflection(year, month, { ...reflections, athlete_name: trimmed });
+      setNameSavedStatus(true);
+      setTimeout(() => setNameSavedStatus(false), 2500);
+    } catch (err) {
+      console.error('Failed to auto-save athlete name:', err);
+    }
+  };
+
+  // Selected habit for detailed duration/metric matrix
+  const activeMetricHabit = useMemo(() => {
+    if (!goals || goals.length === 0) return null;
+    if (selectedHabitId) {
+      const found = goals.find(g => g.id === selectedHabitId);
+      if (found) return found;
+    }
+    // Default to a habit with 'hour' in unit, or the first habit
+    const hourHabit = goals.find(g => g.unit && g.unit.toLowerCase().includes('hour'));
+    return hourHabit || goals[0];
+  }, [goals, selectedHabitId]);
+
+  // Dynamic levels for the activeMetricHabit
+  const metricLevels = useMemo(() => {
+    if (!activeMetricHabit) return [10, 9, 8, 7, 6, 5, 4];
+    const unit = (activeMetricHabit.unit || '').toLowerCase();
+    const target = activeMetricHabit.target_value || 1;
+
+    if (unit.includes('hour')) {
+      const maxHr = Math.max(10, Math.ceil(target + 2));
+      const minHr = Math.max(1, Math.min(4, Math.floor(target / 2)));
+      const lvls = [];
+      for (let h = maxHr; h >= minHr; h--) {
+        lvls.push(h);
+      }
+      return lvls;
+    } else if (unit.includes('problem') || unit.includes('session') || unit.includes('page') || unit.includes('min')) {
+      const maxVal = Math.max(8, Math.ceil(target * 1.5));
+      const step = Math.max(1, Math.round(maxVal / 7));
+      const lvls = [];
+      for (let v = maxVal; v >= 1; v -= step) {
+        if (!lvls.includes(v)) lvls.push(v);
+      }
+      if (!lvls.includes(Math.round(target))) {
+        lvls.push(Math.round(target));
+        lvls.sort((a, b) => b - a);
+      }
+      return lvls.slice(0, 8);
+    } else {
+      const maxVal = Math.max(8, Math.ceil(target * 1.5));
+      const lvls = [];
+      for (let v = maxVal; v >= 1; v--) {
+        lvls.push(v);
+      }
+      return lvls.slice(0, 8);
+    }
+  }, [activeMetricHabit]);
+
+  // Metric Click for active habit: ONLY allowed for TODAY
+  const handleMetricLevelClick = async (val, dayNum) => {
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
     if (dateStr !== todayDateStr) {
+      if (dateStr > todayDateStr) {
+        alert('Future dates are locked and cannot be edited until that day arrives.');
+      } else {
+        alert('Past dates are historical records and locked from further edits.');
+      }
       return;
     }
 
-    const sleepGoal = goals.find((g) => g.name.toLowerCase().includes('sleep'));
-    if (!sleepGoal) {
-      alert('Sleep habit not found in goals.');
-      return;
-    }
+    if (!activeMetricHabit) return;
 
     try {
-      const status = hrs >= sleepGoal.target_value ? 'complete' : (hrs >= 5 ? 'partial' : 'missed');
+      const isComplete = activeMetricHabit.goal_direction === 'lower_is_better' 
+        ? val <= activeMetricHabit.target_value 
+        : val >= activeMetricHabit.target_value;
+
+      const status = isComplete ? 'complete' : (val > 0 ? 'partial' : 'missed');
       const updated = await saveLog({
-        goal_id: sleepGoal.id,
+        goal_id: activeMetricHabit.id,
         log_date: dateStr,
-        target_value: sleepGoal.target_value,
-        actual_value: hrs,
+        target_value: activeMetricHabit.target_value,
+        actual_value: val,
         status: status
       });
 
       setLogsMap((prev) => ({
         ...prev,
-        [`${sleepGoal.id}_${dateStr}`]: updated
+        [`${activeMetricHabit.id}_${dateStr}`]: updated
       }));
-      setSleepMap((prev) => ({
-        ...prev,
-        [dateStr]: hrs
-      }));
+
+      // If it is sleep, keep sleepMap updated
+      if (activeMetricHabit.name.toLowerCase().includes('sleep')) {
+        setSleepMap((prev) => ({
+          ...prev,
+          [dateStr]: val
+        }));
+      }
     } catch (err) {
-      console.error('Failed to log sleep:', err);
+      console.error('Failed to log metric:', err);
     }
   };
 
@@ -414,13 +485,21 @@ const MonthlySheetPage = () => {
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-b border-slate-800/80 py-4">
           <div className="flex items-center gap-3">
             <span className="text-xs font-serif font-bold uppercase tracking-wider text-slate-400">Name :</span>
-            <input 
-              type="text"
-              value={reflections.athlete_name}
-              onChange={(e) => setReflections((prev) => ({ ...prev, athlete_name: e.target.value }))}
-              placeholder="Your Name"
-              className="bg-transparent border-b border-dashed border-slate-600 focus:border-cyan-400 text-white font-semibold text-sm px-2 py-0.5 outline-none"
-            />
+            <div className="flex items-center gap-2">
+              <input 
+                type="text"
+                value={reflections.athlete_name}
+                onChange={(e) => setReflections((prev) => ({ ...prev, athlete_name: e.target.value }))}
+                onBlur={handleNameBlur}
+                placeholder="Your Name"
+                className="bg-transparent border-b border-dashed border-slate-600 focus:border-cyan-400 text-white font-semibold text-sm px-2 py-0.5 outline-none transition-colors"
+              />
+              {nameSavedStatus && (
+                <span className="text-[10px] text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold animate-in fade-in">
+                  ✓ Saved
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -653,98 +732,166 @@ const MonthlySheetPage = () => {
                 </tbody>
               </table>
             </div>
-          </div>
+          </div>          {/* 2. DYNAMIC HABIT METRIC & DURATION MATRIX */}
+          {activeMetricHabit ? (
+            <div className="glass-card rounded-3xl border border-slate-800 overflow-hidden shadow-2xl space-y-0">
+              <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="p-2 rounded-xl text-white border"
+                    style={{ 
+                      backgroundColor: `${activeMetricHabit.category?.color || '#06B6D4'}20`,
+                      borderColor: `${activeMetricHabit.category?.color || '#06B6D4'}40` 
+                    }}
+                  >
+                    <Activity className="w-4 h-4" style={{ color: activeMetricHabit.category?.color || '#06B6D4' }} />
+                  </div>
+                  <div>
+                    <h2 className="text-sm font-bold tracking-wider uppercase text-white flex items-center gap-2">
+                      HABIT METRIC & DURATION MATRIX : <span style={{ color: activeMetricHabit.category?.color || '#06B6D4' }}>{activeMetricHabit.name}</span>
+                    </h2>
+                    <span className="text-[11px] text-slate-400 font-medium">
+                      Target: {activeMetricHabit.target_value} {activeMetricHabit.unit} / day • Click today's column to log exact amount
+                    </span>
+                  </div>
+                </div>
 
-          {/* 2. MIDDLE SLEEP TRACKER GRID */}
-          <div className="glass-card rounded-3xl border border-slate-800 overflow-hidden shadow-2xl">
-            <div className="p-4 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="text-sm font-bold tracking-wider uppercase text-white flex items-center gap-2">
-                <Moon className="w-4 h-4 text-indigo-400" />
-                SLEEP DURATION MATRIX (HOURS)
-              </h2>
-              <span className="text-[11px] text-slate-400 font-medium">
-                Standard Sleep Target: 8 Hours
-              </span>
-            </div>
+                {/* Habit Selector Tabs */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] text-slate-400 font-medium mr-1">Switch Habit:</span>
+                  {goals.map((g) => {
+                    const isSelected = activeMetricHabit.id === g.id;
+                    const habitColor = g.category?.color || '#06B6D4';
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => setSelectedHabitId(g.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+                          isSelected 
+                            ? 'bg-cyan-500 text-slate-950 font-bold shadow-lg shadow-cyan-500/20 scale-105' 
+                            : 'bg-slate-800/80 text-slate-300 hover:bg-slate-800 hover:text-white border border-slate-700/60'
+                        }`}
+                      >
+                        <span 
+                          className="w-2 h-2 rounded-full shrink-0" 
+                          style={{ backgroundColor: habitColor }} 
+                        />
+                        <span className="font-bold">{g.name}</span>
+                        <span className="text-[10px] opacity-75 font-mono">
+                          ({g.target_value} {g.unit?.slice(0, 3)})
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-900/80 border-b border-slate-800">
-                    <th className="p-3 text-left font-serif font-bold uppercase tracking-wider text-slate-300 min-w-[180px] sticky left-0 bg-slate-900 z-10 border-r border-slate-800">
-                      Sleep Duration
-                    </th>
-                    {daysArray.map((d) => {
-                      const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-                      const isToday = dStr === todayDateStr;
-                      return (
-                        <th
-                          key={d}
-                          className={`p-2 text-center font-mono font-bold min-w-[32px] border-r border-slate-800/60 ${
-                            isToday ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400'
-                          }`}
-                        >
-                          {d}
-                        </th>
-                      );
-                    })}
-                  </tr>
-                </thead>
-
-                <tbody>
-                  {sleepHours.map((hrs) => (
-                    <tr 
-                      key={hrs}
-                      className="border-b border-slate-800/60 hover:bg-slate-900/30 transition-colors"
-                    >
-                      <td className="p-2.5 font-bold text-slate-300 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800 flex items-center justify-between">
-                        <span>{hrs} hrs</span>
-                        {hrs === 8 && (
-                          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                            Target
-                          </span>
-                        )}
-                      </td>
-
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse text-xs">
+                  <thead>
+                    <tr className="bg-slate-900/80 border-b border-slate-800">
+                      <th className="p-3 text-left font-serif font-bold uppercase tracking-wider text-slate-300 min-w-[180px] sticky left-0 bg-slate-900 z-10 border-r border-slate-800">
+                        {activeMetricHabit.name} Levels ({activeMetricHabit.unit})
+                      </th>
                       {daysArray.map((d) => {
                         const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                         const isToday = dStr === todayDateStr;
-                        const isFuture = dStr > todayDateStr;
-                        const loggedSleep = sleepMap[dStr];
-                        const isSelected = loggedSleep === hrs;
-
                         return (
-                          <td
+                          <th
                             key={d}
-                            onClick={() => isToday && handleSleepClick(hrs, d)}
-                            className={`p-1.5 text-center border-r border-slate-800/60 ${
-                              isToday 
-                                ? 'bg-cyan-500/10 cursor-pointer hover:bg-indigo-500/20' 
-                                : isFuture 
-                                ? 'bg-slate-950/40 cursor-not-allowed opacity-30'
-                                : 'cursor-default'
+                            className={`p-2 text-center font-mono font-bold min-w-[32px] border-r border-slate-800/60 ${
+                              isToday ? 'bg-cyan-500/20 text-cyan-300' : 'text-slate-400'
                             }`}
                           >
-                            <div className="w-6 h-6 mx-auto rounded flex items-center justify-center">
-                              {isSelected ? (
-                                <div className="w-5 h-5 rounded bg-indigo-500 border border-indigo-400 flex items-center justify-center shadow-md shadow-indigo-500/30">
-                                  <Moon className="w-3 h-3 text-white" />
-                                </div>
-                              ) : (
-                                <div className="w-5 h-5 rounded border border-slate-800/40 flex items-center justify-center">
-                                  <span className="w-1 h-1 rounded-full bg-slate-800/60" />
-                                </div>
-                              )}
-                            </div>
-                          </td>
+                            {d}
+                          </th>
                         );
                       })}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+
+                  <tbody>
+                    {metricLevels.map((lvl) => (
+                      <tr 
+                        key={lvl}
+                        className="border-b border-slate-800/60 hover:bg-slate-900/30 transition-colors"
+                      >
+                        <td className="p-2.5 font-bold text-slate-300 sticky left-0 bg-slate-950/90 z-10 border-r border-slate-800 flex items-center justify-between">
+                          <span>{lvl} {activeMetricHabit.unit}</span>
+                          {lvl === activeMetricHabit.target_value && (
+                            <span 
+                              className="text-[9px] font-bold px-1.5 py-0.5 rounded border"
+                              style={{ 
+                                backgroundColor: `${activeMetricHabit.category?.color || '#06B6D4'}20`,
+                                color: activeMetricHabit.category?.color || '#06B6D4',
+                                borderColor: `${activeMetricHabit.category?.color || '#06B6D4'}40`
+                              }}
+                            >
+                              Target
+                            </span>
+                          )}
+                        </td>
+
+                        {daysArray.map((d) => {
+                          const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                          const isToday = dStr === todayDateStr;
+                          const isFuture = dStr > todayDateStr;
+                          const key = `${activeMetricHabit.id}_${dStr}`;
+                          const log = logsMap[key];
+                          const loggedVal = log ? Math.round(log.actual_value) : null;
+                          const isSelected = loggedVal === lvl;
+
+                          return (
+                            <td
+                              key={d}
+                              onClick={() => isToday && handleMetricLevelClick(lvl, d)}
+                              title={
+                                isToday 
+                                  ? `Today: Click to set ${activeMetricHabit.name} to ${lvl} ${activeMetricHabit.unit}` 
+                                  : isFuture 
+                                  ? 'Future date (Locked)' 
+                                  : `${dStr}: Logged ${loggedVal ?? 0} ${activeMetricHabit.unit}`
+                              }
+                              className={`p-1.5 text-center border-r border-slate-800/60 ${
+                                isToday 
+                                  ? 'bg-cyan-500/10 cursor-pointer hover:bg-cyan-500/25' 
+                                  : isFuture 
+                                  ? 'bg-slate-950/40 cursor-not-allowed opacity-30' 
+                                  : 'cursor-default'
+                              }`}
+                            >
+                              <div className="w-6 h-6 mx-auto rounded flex items-center justify-center">
+                                {isSelected ? (
+                                  <div 
+                                    className="w-5 h-5 rounded flex items-center justify-center shadow-md font-mono text-[10px] font-bold text-white border"
+                                    style={{ 
+                                      backgroundColor: activeMetricHabit.category?.color || '#06B6D4',
+                                      borderColor: '#ffffff50'
+                                    }}
+                                  >
+                                    ✓
+                                  </div>
+                                ) : (
+                                  <div className="w-5 h-5 rounded border border-slate-800/40 flex items-center justify-center">
+                                    <span className="w-1 h-1 rounded-full bg-slate-800/60" />
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="glass-card p-8 rounded-3xl border border-slate-800 text-center text-slate-400">
+              <p className="text-xs">No active habits available. Add habits from the Habits page to track daily durations and metrics.</p>
+            </div>
+          )}
 
           {/* 3. BOTTOM REFLECTION SECTION (3 Spacious Journal Panels) */}
           <div className="glass-card p-6 rounded-3xl border border-slate-800 space-y-6 shadow-2xl">

@@ -32,17 +32,32 @@ import json
 
 @router.get("/reflections/{year}/{month}")
 def get_monthly_reflection(year: int, month: int, db: Session = Depends(get_db)):
+    athlete_set = db.query(Setting).filter(Setting.key == "athlete_name").first()
+    curr_athlete_name = athlete_set.value if athlete_set and athlete_set.value else "Aman"
+
     key = f"reflection_{year}_{month:02d}"
     s = db.query(Setting).filter(Setting.key == key).first()
     if s and s.value:
         try:
-            return json.loads(s.value)
+            data = json.loads(s.value)
+            if not data.get("athlete_name"):
+                data["athlete_name"] = curr_athlete_name
+            return data
         except Exception:
-            return {"goal": s.value, "achieved": "", "improve": "", "athlete_name": "Aman"}
-    return {"goal": "", "achieved": "", "improve": "", "athlete_name": "Aman"}
+            return {"goal": s.value, "achieved": "", "improve": "", "athlete_name": curr_athlete_name}
+    return {"goal": "", "achieved": "", "improve": "", "athlete_name": curr_athlete_name}
 
 @router.put("/reflections/{year}/{month}")
 def save_monthly_reflection(year: int, month: int, payload: Dict[str, Any], db: Session = Depends(get_db)):
+    ath_name = payload.get("athlete_name")
+    if ath_name:
+        ath_set = db.query(Setting).filter(Setting.key == "athlete_name").first()
+        if not ath_set:
+            ath_set = Setting(key="athlete_name", value=ath_name)
+            db.add(ath_set)
+        else:
+            ath_set.value = ath_name
+
     key = f"reflection_{year}_{month:02d}"
     s = db.query(Setting).filter(Setting.key == key).first()
     val = json.dumps(payload)
@@ -52,6 +67,7 @@ def save_monthly_reflection(year: int, month: int, payload: Dict[str, Any], db: 
     else:
         s.value = val
     db.commit()
+    return {"status": "success", "athlete_name": ath_name}
 @router.put("/{key}")
 def update_setting(key: str, payload: SettingUpdate, db: Session = Depends(get_db)):
     setting = db.query(Setting).filter(Setting.key == key).first()

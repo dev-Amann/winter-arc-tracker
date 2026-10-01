@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 # Category Schemas
 class CategoryBase(BaseModel):
@@ -27,11 +27,22 @@ class GoalBase(BaseModel):
     type: str = "habit"  # habit or goal
     frequency: str = "daily"  # daily, weekly, custom
     target_value: float = 1.0
+    current_value: Optional[float] = 0.0
     unit: str = "hours"
     goal_direction: str = "higher_is_better"  # higher_is_better or lower_is_better
+    status: Optional[str] = "in_progress"  # in_progress, achieved, paused
+    linked_habit_ids: Optional[str] = ""
+    description: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: bool = True
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def empty_date_to_none(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
 class GoalCreate(GoalBase):
     pass
@@ -42,11 +53,22 @@ class GoalUpdate(BaseModel):
     type: Optional[str] = None
     frequency: Optional[str] = None
     target_value: Optional[float] = None
+    current_value: Optional[float] = None
     unit: Optional[str] = None
     goal_direction: Optional[str] = None
+    status: Optional[str] = None
+    linked_habit_ids: Optional[str] = None
+    description: Optional[str] = None
     start_date: Optional[date] = None
     end_date: Optional[date] = None
     is_active: Optional[bool] = None
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def empty_date_to_none(cls, v):
+        if v == "" or v is None:
+            return None
+        return v
 
 class GoalResponse(GoalBase):
     id: int

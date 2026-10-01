@@ -42,6 +42,7 @@ const HabitsPage = () => {
       setEditingHabit(null);
     } catch (err) {
       console.error('Failed to save habit:', err);
+      alert('Failed to save habit: ' + (err.response?.data?.detail || err.message));
     }
   };
 
