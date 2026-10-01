@@ -22,7 +22,9 @@ import {
   BarChart3,
   TrendingUp,
   Activity,
-  Layers
+  Layers,
+  MessageSquare,
+  FileText
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -51,6 +53,7 @@ const MonthlySheetPage = () => {
   const [goals, setGoals] = useState([]);
   const [logsMap, setLogsMap] = useState({}); // key: `${goalId}_${dateStr}`
   const [sleepMap, setSleepMap] = useState({}); // key: dateStr -> hours
+  const [monthLogs, setMonthLogs] = useState([]);
   const [reflections, setReflections] = useState({
     athlete_name: 'Aman',
     goal: '',
@@ -102,6 +105,7 @@ const MonthlySheetPage = () => {
 
       setLogsMap(lMap);
       setSleepMap(sMap);
+      setMonthLogs(logsRes);
       if (reflRes) {
         setReflections({
           athlete_name: reflRes.athlete_name || 'Aman',
@@ -120,6 +124,26 @@ const MonthlySheetPage = () => {
   useEffect(() => {
     loadMonthData();
   }, [year, month]);
+
+  // Daily Notes grouped by date across the month
+  const dailyNotesList = useMemo(() => {
+    const grouped = {};
+    monthLogs.forEach((l) => {
+      if (l.notes && l.notes.trim()) {
+        if (!grouped[l.log_date]) {
+          grouped[l.log_date] = [];
+        }
+        grouped[l.log_date].push(l);
+      }
+    });
+
+    return Object.entries(grouped)
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .map(([dateStr, entries]) => ({
+        dateStr,
+        entries
+      }));
+  }, [monthLogs]);
 
   // Navigation handlers
   const handlePrevMonth = () => {
@@ -786,6 +810,73 @@ const MonthlySheetPage = () => {
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 resize-none leading-relaxed"
                 />
               </div>
+            </div>
+
+            {/* Daily Habit Reflections & Notes Feed */}
+            <div className="mt-8 pt-6 border-t border-slate-800/80 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-cyan-400" />
+                  DAILY HABIT NOTES & REFLECTIONS ARCHIVE ({monthName} {year})
+                </h3>
+                <span className="text-[11px] font-semibold text-cyan-400 bg-cyan-500/10 px-2.5 py-1 rounded-full border border-cyan-500/20">
+                  {dailyNotesList.reduce((acc, d) => acc + d.entries.length, 0)} Logged Notes
+                </span>
+              </div>
+
+              {dailyNotesList.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {dailyNotesList.map((dayGroup) => (
+                    <div 
+                      key={dayGroup.dateStr}
+                      className="p-4 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-3"
+                    >
+                      <div className="flex items-center justify-between text-xs border-b border-slate-800/60 pb-2">
+                        <span className="font-bold text-cyan-400 flex items-center gap-1.5">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {new Date(dayGroup.dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono">
+                          {dayGroup.entries.length} habit note{dayGroup.entries.length > 1 ? 's' : ''}
+                        </span>
+                      </div>
+
+                      <div className="space-y-2">
+                        {dayGroup.entries.map((entry) => (
+                          <div key={entry.id} className="text-xs space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span 
+                                className="w-2 h-2 rounded-full" 
+                                style={{ backgroundColor: entry.goal?.category?.color || '#06B6D4' }} 
+                              />
+                              <span className="font-bold text-slate-200">{entry.goal?.name || 'Habit'}:</span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono">
+                                {entry.actual_value} {entry.goal?.unit || ''}
+                              </span>
+                              <span className={`text-[10px] font-bold uppercase ml-auto ${
+                                entry.status === 'complete' ? 'text-emerald-400' : entry.status === 'partial' ? 'text-amber-400' : 'text-rose-400'
+                              }`}>
+                                {entry.status}
+                              </span>
+                            </div>
+                            <p className="text-slate-300 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/40 text-[11px] italic leading-relaxed">
+                              "{entry.notes}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 bg-slate-900/40 rounded-2xl border border-dashed border-slate-800 text-center space-y-1.5">
+                  <FileText className="w-6 h-6 text-slate-600 mx-auto" />
+                  <div className="text-xs font-semibold text-slate-400">No daily notes logged yet for {monthName} {year}</div>
+                  <div className="text-[11px] text-slate-500 max-w-md mx-auto">
+                    When you type notes and reflections on the <strong className="text-cyan-400">Today</strong> page, they will automatically appear here as your monthly accountability diary!
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
