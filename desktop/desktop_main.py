@@ -25,37 +25,43 @@ def run_backend():
         log_level="warning"
     )
 
+def is_server_running(url):
+    """Check if server is already running on the given URL."""
+    try:
+        with urllib.request.urlopen(f"{url}/api/health", timeout=1) as response:
+            return response.status == 200
+    except Exception:
+        return False
+
 def wait_for_server(url, timeout=10):
     """Wait for FastAPI server health check endpoint to respond."""
     start_time = time.time()
     while time.time() - start_time < timeout:
-        try:
-            with urllib.request.urlopen(f"{url}/api/health") as response:
-                if response.status == 200:
-                    return True
-        except Exception:
-            pass
+        if is_server_running(url):
+            return True
         time.sleep(0.3)
     return False
 
 def main():
     print("Starting Winter Arc Tracker Desktop App...")
-    
-    # 1. Launch FastAPI server in a background thread
-    server_thread = threading.Thread(target=run_backend, daemon=True)
-    server_thread.start()
-
     server_url = f"http://{settings.API_HOST}:{settings.API_PORT}"
-    
-    print(f"Waiting for backend service at {server_url}...")
-    if wait_for_server(server_url):
-        print("Backend service is online!")
-    else:
-        print("Warning: Backend health check timed out. Attempting window creation...")
 
-    # 2. Launch PyWebView Native Desktop Window
+    # Check if backend server is already running (e.g. running as daemon or separate terminal)
+    if is_server_running(server_url):
+        print(f"Backend service is already online at {server_url}. Connecting to active instance...")
+    else:
+        print(f"Launching backend service on {server_url}...")
+        server_thread = threading.Thread(target=run_backend, daemon=True)
+        server_thread.start()
+
+        if wait_for_server(server_url):
+            print("Backend service initialized successfully!")
+        else:
+            print("Warning: Backend health check timed out. Attempting window creation...")
+
+    # Launch PyWebView Native Desktop Window
     webview.create_window(
-        title="Winter Arc Tracker 2026",
+        title="Winter Arc Tracker",
         url=server_url,
         width=1280,
         height=850,

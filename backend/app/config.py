@@ -1,6 +1,12 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = BACKEND_DIR.parent
+
+load_dotenv(BACKEND_DIR / ".env")
+load_dotenv(ROOT_DIR / ".env")
 load_dotenv()
 
 class Settings:
