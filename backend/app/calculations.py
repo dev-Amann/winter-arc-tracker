@@ -79,3 +79,22 @@ def calculate_streak(logs_by_date: Dict[date, float], target_pct: float = 80.0) 
         "current_streak": current_streak,
         "best_streak": max(best_streak, current_streak)
     }
+
+
+def is_goal_active_on_date(goal, d: date) -> bool:
+    """
+    Check if a goal/habit was active on a specific calendar date d.
+    If the habit was created after d (or has start_date > d), it was NOT active.
+    If the habit has an end_date and d > end_date, it is no longer active.
+    """
+    if hasattr(goal, "is_active") and not goal.is_active:
+        return False
+    start_d = getattr(goal, "start_date", None)
+    if not start_d and hasattr(goal, "created_at") and goal.created_at:
+        start_d = goal.created_at.date()
+    if start_d and d < start_d:
+        return False
+    end_d = getattr(goal, "end_date", None)
+    if end_d and d > end_d:
+        return False
+    return True

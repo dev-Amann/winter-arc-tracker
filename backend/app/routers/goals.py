@@ -102,6 +102,8 @@ def get_goal(goal_id: int, db: Session = Depends(get_db)):
 
 @router.post("", response_model=GoalResponse, status_code=status.HTTP_201_CREATED)
 def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
+    from datetime import date
+    start_d = goal.start_date or date.today()
     db_goal = Goal(
         name=goal.name,
         category_id=goal.category_id,
@@ -114,7 +116,7 @@ def create_goal(goal: GoalCreate, db: Session = Depends(get_db)):
         status=goal.status or "in_progress",
         linked_habit_ids=goal.linked_habit_ids or "",
         description=goal.description,
-        start_date=goal.start_date,
+        start_date=start_d,
         end_date=goal.end_date,
         is_active=goal.is_active
     )

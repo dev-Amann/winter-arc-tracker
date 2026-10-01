@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import GoalLog, Goal, DailyRecord, Setting
 from app.schemas import DashboardStats
-from app.calculations import calculate_streak
+from app.calculations import calculate_streak, is_goal_active_on_date
 from app.routers.goals import seed_sample_goals_if_empty
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
@@ -15,37 +15,41 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
     seed_sample_goals_if_empty(db)
     today = date.today()
     
-    # 1. Today's logs & plan
+    # 1. Today's active goals & logs
+    all_goals = db.query(Goal).filter(Goal.is_active == True).all()
+    today_active_goals = [g for g in all_goals if is_goal_active_on_date(g, today)]
+    
     today_logs = db.query(GoalLog).filter(GoalLog.log_date == today).all()
-    active_goals = db.query(Goal).filter(Goal.is_active == True).all()
+    valid_today_logs = [l for l in today_logs if l.goal and is_goal_active_on_date(l.goal, today)]
 
-    today_plan_count = len(active_goals)
-    today_completed_count = sum(1 for l in today_logs if l.status == "complete")
+    today_plan_count = len(today_active_goals)
+    today_completed_count = sum(1 for l in valid_today_logs if l.status == "complete")
 
-    today_achievements = [l.achievement_pct for l in today_logs]
+    today_achievements = [l.achievement_pct for l in valid_today_logs]
     today_completion_pct = round(sum(today_achievements) / len(today_achievements), 1) if today_achievements else 0.0
 
     today_planned_hours = 0.0
     today_actual_hours = 0.0
 
-    for g in active_goals:
+    for g in today_active_goals:
         if g.unit and "hour" in g.unit.lower():
             today_planned_hours += g.target_value
         elif g.unit and "min" in g.unit.lower():
             today_planned_hours += g.target_value / 60.0
 
-    for l in today_logs:
+    for l in valid_today_logs:
         g = l.goal
         if g and g.unit and "hour" in g.unit.lower():
             today_actual_hours += l.actual_value
         elif g and g.unit and "min" in g.unit.lower():
             today_actual_hours += l.actual_value / 60.0
 
-    # 2. Streak calculations (all daily averages)
+    # 2. Streak calculations (all daily averages, only counting active goals for each day)
     all_logs = db.query(GoalLog).all()
     logs_by_date: Dict[date, list] = {}
     for l in all_logs:
-        logs_by_date.setdefault(l.log_date, []).append(l.achievement_pct)
+        if l.goal and is_goal_active_on_date(l.goal, l.log_date):
+            logs_by_date.setdefault(l.log_date, []).append(l.achievement_pct)
 
     daily_avg_by_date: Dict[date, float] = {
         d: sum(pcts) / len(pcts) for d, pcts in logs_by_date.items()

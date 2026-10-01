@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { X, Target, Check, AlertCircle } from 'lucide-react';
 
 const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
+  const todayStr = new Date().toISOString().split('T')[0];
+
   const [formData, setFormData] = useState({
     name: '',
     category_id: '',
@@ -10,7 +12,7 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
     target_value: 1,
     unit: 'hours',
     goal_direction: 'higher_is_better',
-    start_date: '',
+    start_date: todayStr,
     end_date: '',
     is_active: true
   });
@@ -25,7 +27,7 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
         target_value: initialData.target_value ?? 1,
         unit: initialData.unit || 'hours',
         goal_direction: initialData.goal_direction || 'higher_is_better',
-        start_date: initialData.start_date || '',
+        start_date: initialData.start_date || todayStr,
         end_date: initialData.end_date || '',
         is_active: initialData.is_active ?? true
       });
@@ -38,7 +40,7 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
         target_value: 1,
         unit: 'hours',
         goal_direction: 'higher_is_better',
-        start_date: '',
+        start_date: todayStr,
         end_date: '',
         is_active: true
       });
@@ -196,8 +198,8 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
           {/* Start and End Dates */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-                Start Date (Optional)
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
+                Start Date
               </label>
               <input 
                 type="date"
@@ -205,10 +207,13 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-cyan-500 text-xs"
               />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Tracked only from this date onwards (past days won't be penalized).
+              </span>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
                 End Date (Optional)
               </label>
               <input 
@@ -217,6 +222,9 @@ const GoalModal = ({ isOpen, onClose, onSave, initialData, categories }) => {
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
                 className="w-full bg-slate-800/80 border border-slate-700 rounded-xl px-4 py-2 text-white focus:outline-none focus:border-cyan-500 text-xs"
               />
+              <span className="text-[10px] text-slate-400 mt-1 block">
+                Optional: Stop tracking after this date.
+              </span>
             </div>
           </div>
 

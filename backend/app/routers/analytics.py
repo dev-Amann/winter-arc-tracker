@@ -10,6 +10,7 @@ from app.schemas import (
     MonthlySummaryItem, CalendarHeatmapItem,
     PeriodComparisonResponse, MetricComparison
 )
+from app.calculations import is_goal_active_on_date
 
 router = APIRouter(prefix="/api/analytics", tags=["Analytics"])
 
@@ -44,6 +45,7 @@ def get_planned_vs_actual(
         e_date = today
 
     logs = db.query(GoalLog).filter(GoalLog.log_date >= s_date, GoalLog.log_date <= e_date).all()
+    logs = [l for l in logs if l.goal and is_goal_active_on_date(l.goal, l.log_date)]
     
     goal_stats: Dict[int, Dict[str, Any]] = {}
     
@@ -87,6 +89,7 @@ def get_monthly_analytics(year: Optional[int] = None, db: Session = Depends(get_
         GoalLog.log_date >= date(target_year, 1, 1),
         GoalLog.log_date <= date(target_year, 12, 31)
     ).all()
+    logs = [l for l in logs if l.goal and is_goal_active_on_date(l.goal, l.log_date)]
 
     month_data = {m: {"planned": 0.0, "actual": 0.0, "completed": 0, "missed": 0, "daily_pcts": {}} for m in range(1, 13)}
 
@@ -200,6 +203,7 @@ def get_calendar_heatmap(
         query = query.filter(GoalLog.goal_id == goal_id)
     
     logs = query.all()
+    logs = [l for l in logs if l.goal and is_goal_active_on_date(l.goal, l.log_date)]
     
     if category_id:
         logs = [l for l in logs if l.goal and l.goal.category_id == category_id]

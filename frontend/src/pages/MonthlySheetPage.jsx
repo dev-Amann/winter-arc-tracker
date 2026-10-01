@@ -89,7 +89,16 @@ const MonthlySheetPage = () => {
         getMonthlyReflection(year, month)
       ]);
 
-      setGoals(goalsRes);
+      // Only include goals active during this selected month
+      const activeMonthGoals = goalsRes.filter((g) => {
+        const gStart = g.start_date || (g.created_at ? g.created_at.split('T')[0] : null);
+        const gEnd = g.end_date || null;
+        if (gStart && gStart > endStr) return false;
+        if (gEnd && gEnd < startStr) return false;
+        return true;
+      });
+
+      setGoals(activeMonthGoals);
 
       const lMap = {};
       const sMap = {};
@@ -305,6 +314,17 @@ const MonthlySheetPage = () => {
 
     if (!activeMetricHabit) return;
 
+    const aStart = activeMetricHabit.start_date || (activeMetricHabit.created_at ? activeMetricHabit.created_at.split('T')[0] : null);
+    const aEnd = activeMetricHabit.end_date || null;
+    if (aStart && dateStr < aStart) {
+      alert(`This habit was not active on ${dateStr}. It started on ${aStart}.`);
+      return;
+    }
+    if (aEnd && dateStr > aEnd) {
+      alert(`This habit is retired. It ended on ${aEnd}.`);
+      return;
+    }
+
     try {
       const isComplete = activeMetricHabit.goal_direction === 'lower_is_better' 
         ? val <= activeMetricHabit.target_value 
@@ -361,23 +381,41 @@ const MonthlySheetPage = () => {
   const dailyTrendData = useMemo(() => {
     return daysArray.map((d) => {
       const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      const dayLogs = Object.values(logsMap).filter((l) => l.log_date === dStr);
+      const isFuture = dStr > todayDateStr;
+
+      // Only count habits that were active on this specific date
+      const activeHabitsOnDay = goals.filter((g) => {
+        const start = g.start_date || (g.created_at ? g.created_at.split('T')[0] : null);
+        const end = g.end_date || null;
+        if (start && dStr < start) return false;
+        if (end && dStr > end) return false;
+        return true;
+      });
+
       let achPct = 0;
       let plannedHrs = 0;
       let actualHrs = 0;
 
-      if (dayLogs.length > 0) {
-        achPct = Math.round(dayLogs.reduce((acc, l) => acc + (l.achievement_pct || 0), 0) / dayLogs.length);
-        dayLogs.forEach((l) => {
-          const g = l.goal;
-          if (g && g.unit && g.unit.toLowerCase().includes('hour')) {
-            plannedHrs += l.target_value;
-            actualHrs += l.actual_value;
-          } else if (g && g.unit && g.unit.toLowerCase().includes('min')) {
-            plannedHrs += l.target_value / 60;
-            actualHrs += l.actual_value / 60;
+      if (activeHabitsOnDay.length > 0 && !isFuture) {
+        let dayAchSum = 0;
+        activeHabitsOnDay.forEach((g) => {
+          const l = logsMap[`${g.id}_${dStr}`];
+          if (l) {
+            dayAchSum += l.achievement_pct || 0;
+            if (g.unit && g.unit.toLowerCase().includes('hour')) {
+              plannedHrs += l.target_value;
+              actualHrs += l.actual_value;
+            } else if (g.unit && g.unit.toLowerCase().includes('min')) {
+              plannedHrs += l.target_value / 60;
+              actualHrs += l.actual_value / 60;
+            }
+          } else {
+            if (g.unit && g.unit.toLowerCase().includes('hour')) {
+              plannedHrs += g.target_value;
+            }
           }
         });
+        achPct = Math.round(dayAchSum / activeHabitsOnDay.length);
       }
 
       return {
@@ -391,7 +429,7 @@ const MonthlySheetPage = () => {
         targetBaseline: 80
       };
     });
-  }, [daysArray, logsMap, sleepMap, year, month]);
+  }, [daysArray, logsMap, sleepMap, year, month, goals, todayDateStr]);
 
   // 2. Habit Comparison Data for the Month
   const habitComparisonData = useMemo(() => {
@@ -401,25 +439,41 @@ const MonthlySheetPage = () => {
       let missedDays = 0;
       let totalActual = 0;
       let totalPlanned = 0;
+      let activeDaysCount = 0;
+
+      const gStart = g.start_date || (g.created_at ? g.created_at.split('T')[0] : null);
+      const gEnd = g.end_date || null;
 
       daysArray.forEach((d) => {
         const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-        const log = logsMap[`${g.id}_${dStr}`];
-        if (log) {
-          if (log.status === 'complete') completedDays++;
-          else if (log.status === 'partial') partialDays++;
-          else if (log.status === 'missed') missedDays++;
-          totalActual += log.actual_value || 0;
-          totalPlanned += log.target_value || 0;
+        const isBeforeInception = gStart && dStr < gStart;
+        const isAfterRetirement = gEnd && dStr > gEnd;
+        const isFuture = dStr > todayDateStr;
+
+        if (!isBeforeInception && !isAfterRetirement) {
+          activeDaysCount++;
+          const log = logsMap[`${g.id}_${dStr}`];
+          if (log) {
+            if (log.status === 'complete') completedDays++;
+            else if (log.status === 'partial') partialDays++;
+            else if (log.status === 'missed') missedDays++;
+            totalActual += log.actual_value || 0;
+            totalPlanned += log.target_value || 0;
+          } else if (!isFuture) {
+            missedDays++;
+            totalPlanned += g.target_value || 0;
+          }
         }
       });
 
-      const successRate = Math.round((completedDays / daysInMonth) * 100);
+      const denominator = activeDaysCount > 0 ? activeDaysCount : 1;
+      const successRate = Math.round((completedDays / denominator) * 100);
       return {
         name: g.name,
         completedDays,
         partialDays,
         missedDays,
+        activeDaysCount,
         successRate,
         actualTotal: Math.round(totalActual * 10) / 10,
         plannedTotal: Math.round(totalPlanned * 10) / 10,
@@ -427,7 +481,7 @@ const MonthlySheetPage = () => {
         unit: g.unit
       };
     });
-  }, [goals, daysArray, logsMap, daysInMonth, year, month]);
+  }, [goals, daysArray, logsMap, daysInMonth, year, month, todayDateStr]);
 
   // 3. Overall Monthly Summary Statistics
   const monthStats = useMemo(() => {
@@ -636,7 +690,11 @@ const MonthlySheetPage = () => {
 
                 <tbody>
                   {goals.map((g, idx) => {
+                    const gStart = g.start_date || (g.created_at ? g.created_at.split('T')[0] : null);
+                    const gEnd = g.end_date || null;
                     let completedDaysCount = 0;
+                    let activeDaysElapsed = 0;
+
                     return (
                       <tr 
                         key={g.id} 
@@ -664,13 +722,38 @@ const MonthlySheetPage = () => {
                           const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                           const isToday = dStr === todayDateStr;
                           const isFuture = dStr > todayDateStr;
-                          const isPast = dStr < todayDateStr;
+                          const isBeforeInception = gStart && dStr < gStart;
+                          const isAfterRetirement = gEnd && dStr > gEnd;
+                          const isActiveDay = !isBeforeInception && !isAfterRetirement;
+
+                          if (isActiveDay && !isFuture) {
+                            activeDaysElapsed++;
+                          }
 
                           const key = `${g.id}_${dStr}`;
                           const log = logsMap[key];
                           const status = log ? log.status : 'missed';
 
-                          if (status === 'complete') completedDaysCount++;
+                          if (isActiveDay && status === 'complete') completedDaysCount++;
+
+                          // Inactive state prior to creation date or after retirement date
+                          if (!isActiveDay) {
+                            return (
+                              <td
+                                key={d}
+                                title={
+                                  isBeforeInception 
+                                    ? `Not active on this date (Habit started on ${gStart})` 
+                                    : `Habit retired on ${gEnd}`
+                                }
+                                className="p-1.5 text-center border-r border-slate-800/60 bg-slate-950/60 cursor-not-allowed opacity-35"
+                              >
+                                <div className="w-6 h-6 mx-auto rounded flex items-center justify-center font-mono text-[11px] text-slate-600 font-bold">
+                                  —
+                                </div>
+                              </td>
+                            );
+                          }
 
                           return (
                             <td
@@ -724,7 +807,10 @@ const MonthlySheetPage = () => {
 
                         {/* Month Score */}
                         <td className="p-2 text-center font-mono font-bold text-cyan-400 bg-slate-950/50">
-                          {completedDaysCount}d
+                          <div className="text-xs">{completedDaysCount} / {activeDaysElapsed || 1}d</div>
+                          <div className="text-[9px] text-slate-400 font-normal">
+                            {Math.round((completedDaysCount / (activeDaysElapsed || 1)) * 100)}%
+                          </div>
                         </td>
                       </tr>
                     );
@@ -837,6 +923,30 @@ const MonthlySheetPage = () => {
                           const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
                           const isToday = dStr === todayDateStr;
                           const isFuture = dStr > todayDateStr;
+                          const aStart = activeMetricHabit.start_date || (activeMetricHabit.created_at ? activeMetricHabit.created_at.split('T')[0] : null);
+                          const aEnd = activeMetricHabit.end_date || null;
+                          const isBeforeInception = aStart && dStr < aStart;
+                          const isAfterRetirement = aEnd && dStr > aEnd;
+                          const isActiveDay = !isBeforeInception && !isAfterRetirement;
+
+                          if (!isActiveDay) {
+                            return (
+                              <td
+                                key={d}
+                                title={
+                                  isBeforeInception 
+                                    ? `Not active on this date (${activeMetricHabit.name} started on ${aStart})` 
+                                    : `${activeMetricHabit.name} retired on ${aEnd}`
+                                }
+                                className="p-1.5 text-center border-r border-slate-800/60 bg-slate-950/60 cursor-not-allowed opacity-35"
+                              >
+                                <div className="w-6 h-6 mx-auto rounded flex items-center justify-center font-mono text-[11px] text-slate-600 font-bold">
+                                  —
+                                </div>
+                              </td>
+                            );
+                          }
+
                           const key = `${activeMetricHabit.id}_${dStr}`;
                           const log = logsMap[key];
                           const loggedVal = log ? Math.round(log.actual_value) : null;

@@ -22,7 +22,9 @@ def get_habits(
 
 @router.post("", response_model=GoalResponse, status_code=status.HTTP_201_CREATED)
 def create_habit(habit: GoalCreate, db: Session = Depends(get_db)):
+    from datetime import date
     habit.type = "habit"
+    start_d = habit.start_date or date.today()
     db_habit = Goal(
         name=habit.name,
         category_id=habit.category_id,
@@ -35,7 +37,7 @@ def create_habit(habit: GoalCreate, db: Session = Depends(get_db)):
         status=habit.status or "in_progress",
         linked_habit_ids=habit.linked_habit_ids or "",
         description=habit.description,
-        start_date=habit.start_date,
+        start_date=start_d,
         end_date=habit.end_date,
         is_active=habit.is_active
     )
