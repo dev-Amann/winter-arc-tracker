@@ -84,13 +84,14 @@ const MonthlySheetPage = () => {
       const endStr = `${year}-${String(month).padStart(2, '0')}-${String(daysInMonth).padStart(2, '0')}`;
 
       const [goalsRes, logsRes, reflRes] = await Promise.all([
-        getGoals({ is_active: true }),
+        getGoals({ is_active: true, type: 'habit' }),
         getLogs({ start_date: startStr, end_date: endStr }),
         getMonthlyReflection(year, month)
       ]);
 
-      // Only include goals active during this selected month
+      // Only include habits (not milestone goals) active during this selected month
       const activeMonthGoals = goalsRes.filter((g) => {
+        if (g.type && g.type !== 'habit') return false;
         const gStart = g.start_date || (g.created_at ? g.created_at.split('T')[0] : null);
         const gEnd = g.end_date || null;
         if (gStart && gStart > endStr) return false;
@@ -682,8 +683,9 @@ const MonthlySheetPage = () => {
                         </th>
                       );
                     })}
-                    <th className="p-2 text-center font-bold text-slate-300 min-w-[60px] bg-slate-900">
-                      Score
+                    <th className="p-2 text-center font-bold text-slate-300 min-w-[72px] bg-slate-900" title="Days Completed / Active Days Elapsed so far this month">
+                      <div>Done / Days</div>
+                      <div className="text-[9px] text-slate-400 font-normal">% Consistent</div>
                     </th>
                   </tr>
                 </thead>
@@ -805,10 +807,10 @@ const MonthlySheetPage = () => {
                           );
                         })}
 
-                        {/* Month Score */}
-                        <td className="p-2 text-center font-mono font-bold text-cyan-400 bg-slate-950/50">
-                          <div className="text-xs">{completedDaysCount} / {activeDaysElapsed || 1}d</div>
-                          <div className="text-[9px] text-slate-400 font-normal">
+                        {/* Month Done / Days Progress */}
+                        <td className="p-2 text-center font-mono font-bold bg-slate-950/50">
+                          <div className="text-xs text-cyan-300 font-extrabold">{completedDaysCount} / {activeDaysElapsed || 1}d</div>
+                          <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">
                             {Math.round((completedDaysCount / (activeDaysElapsed || 1)) * 100)}%
                           </div>
                         </td>
