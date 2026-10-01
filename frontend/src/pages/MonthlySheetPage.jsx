@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   getGoals, 
   getLogs, 
@@ -18,8 +18,27 @@ import {
   Flame, 
   Sparkles,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  BarChart3,
+  TrendingUp,
+  Activity,
+  Layers
 } from 'lucide-react';
+import { 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  BarChart, 
+  Bar, 
+  AreaChart, 
+  Area, 
+  XAxis, 
+  YAxis, 
+  Tooltip, 
+  CartesianGrid, 
+  Cell, 
+  ReferenceLine 
+} from 'recharts';
 
 const MonthlySheetPage = () => {
   const today = new Date();
@@ -242,6 +261,113 @@ const MonthlySheetPage = () => {
 
   // Sleep hour rows (10 down to 4)
   const sleepHours = [10, 9, 8, 7, 6, 5, 4];
+
+  // 1. Daily Trendline Data across days 1..daysInMonth
+  const dailyTrendData = useMemo(() => {
+    return daysArray.map((d) => {
+      const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayLogs = Object.values(logsMap).filter((l) => l.log_date === dStr);
+      let achPct = 0;
+      let plannedHrs = 0;
+      let actualHrs = 0;
+
+      if (dayLogs.length > 0) {
+        achPct = Math.round(dayLogs.reduce((acc, l) => acc + (l.achievement_pct || 0), 0) / dayLogs.length);
+        dayLogs.forEach((l) => {
+          const g = l.goal;
+          if (g && g.unit && g.unit.toLowerCase().includes('hour')) {
+            plannedHrs += l.target_value;
+            actualHrs += l.actual_value;
+          } else if (g && g.unit && g.unit.toLowerCase().includes('min')) {
+            plannedHrs += l.target_value / 60;
+            actualHrs += l.actual_value / 60;
+          }
+        });
+      }
+
+      return {
+        day: d,
+        dayLabel: `Day ${d}`,
+        dateStr: dStr,
+        achievement: achPct,
+        sleep: sleepMap[dStr] || 0,
+        planned: Math.round(plannedHrs * 10) / 10,
+        actual: Math.round(actualHrs * 10) / 10,
+        targetBaseline: 80
+      };
+    });
+  }, [daysArray, logsMap, sleepMap, year, month]);
+
+  // 2. Habit Comparison Data for the Month
+  const habitComparisonData = useMemo(() => {
+    return goals.map((g) => {
+      let completedDays = 0;
+      let partialDays = 0;
+      let missedDays = 0;
+      let totalActual = 0;
+      let totalPlanned = 0;
+
+      daysArray.forEach((d) => {
+        const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        const log = logsMap[`${g.id}_${dStr}`];
+        if (log) {
+          if (log.status === 'complete') completedDays++;
+          else if (log.status === 'partial') partialDays++;
+          else if (log.status === 'missed') missedDays++;
+          totalActual += log.actual_value || 0;
+          totalPlanned += log.target_value || 0;
+        }
+      });
+
+      const successRate = Math.round((completedDays / daysInMonth) * 100);
+      return {
+        name: g.name,
+        completedDays,
+        partialDays,
+        missedDays,
+        successRate,
+        actualTotal: Math.round(totalActual * 10) / 10,
+        plannedTotal: Math.round(totalPlanned * 10) / 10,
+        color: g.category?.color || '#06B6D4',
+        unit: g.unit
+      };
+    });
+  }, [goals, daysArray, logsMap, daysInMonth, year, month]);
+
+  // 3. Overall Monthly Summary Statistics
+  const monthStats = useMemo(() => {
+    let totalAch = 0;
+    let daysWithLogs = 0;
+    let consistentDays = 0;
+    let totalActualHrs = 0;
+    let totalSleepHrs = 0;
+    let sleepDaysCount = 0;
+
+    dailyTrendData.forEach((d) => {
+      if (d.achievement > 0) {
+        totalAch += d.achievement;
+        daysWithLogs++;
+      }
+      if (d.achievement >= 80) {
+        consistentDays++;
+      }
+      totalActualHrs += d.actual;
+      if (d.sleep > 0) {
+        totalSleepHrs += d.sleep;
+        sleepDaysCount++;
+      }
+    });
+
+    const avgAch = daysWithLogs > 0 ? Math.round(totalAch / daysWithLogs) : 0;
+    const avgSleep = sleepDaysCount > 0 ? (totalSleepHrs / sleepDaysCount).toFixed(1) : 0;
+
+    return {
+      avgAch,
+      consistentDays,
+      totalActualHrs: Math.round(totalActualHrs * 10) / 10,
+      avgSleep
+    };
+  }, [dailyTrendData]);
 
   return (
     <div className="flex-1 bg-slate-950 text-slate-100 p-6 max-w-7xl mx-auto w-full space-y-8 select-none">
@@ -659,6 +785,193 @@ const MonthlySheetPage = () => {
                   onChange={(e) => setReflections((prev) => ({ ...prev, improve: e.target.value }))}
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500 resize-none leading-relaxed"
                 />
+              </div>
+            </div>
+          </div>
+
+          {/* 4. SEPARATE SECTION: MONTHLY PERFORMANCE ANALYTICS & CHARTS */}
+          <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-8 shadow-2xl">
+            {/* Header & Stat Pills */}
+            <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-800 pb-5">
+              <div>
+                <h2 className="text-base font-bold text-white tracking-wide uppercase font-serif flex items-center gap-2.5">
+                  <BarChart3 className="w-5 h-5 text-cyan-400" />
+                  MONTHLY PERFORMANCE CHARTS & TRENDLINES ({monthName.toUpperCase()} {year})
+                </h2>
+                <p className="text-xs text-slate-400 mt-1">
+                  Statistical evaluation of consistency, habit adherence, and sleep patterns
+                </p>
+              </div>
+
+              {/* 4 Quick Stat Badges */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Monthly Avg</div>
+                  <div className="text-base font-black text-cyan-400">{monthStats.avgAch}%</div>
+                </div>
+
+                <div className="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Consistent Days</div>
+                  <div className="text-base font-black text-emerald-400">{monthStats.consistentDays} <span className="text-[10px] text-slate-500 font-normal">/ {daysInMonth}d</span></div>
+                </div>
+
+                <div className="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Hours Executed</div>
+                  <div className="text-base font-black text-sky-400">{monthStats.totalActualHrs}h</div>
+                </div>
+
+                <div className="bg-slate-900/90 border border-slate-800 px-3.5 py-1.5 rounded-xl text-center">
+                  <div className="text-[10px] uppercase font-bold text-slate-400">Avg Sleep</div>
+                  <div className="text-base font-black text-indigo-400">{monthStats.avgSleep}h</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Grid of Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Chart 1: Daily Consistency Trendline */}
+              <div className="p-6 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-cyan-400" />
+                      Daily Consistency Trendline
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Day-by-day achievement % across {monthName}</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                    80% Target
+                  </span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="monthAchGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#06B6D4" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#06B6D4" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                      <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
+                        formatter={(value) => [`${value}%`, 'Daily Achievement']}
+                        labelFormatter={(label) => `Day ${label} (${monthName})`}
+                      />
+                      <ReferenceLine y={80} stroke="#F59E0B" strokeDasharray="4 4" label={{ value: '80% Consistent', fill: '#F59E0B', fontSize: 10, position: 'insideTopRight' }} />
+                      <Area type="monotone" dataKey="achievement" stroke="#06B6D4" strokeWidth={2.5} fillOpacity={1} fill="url(#monthAchGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 2: Habits Success Rate */}
+              <div className="p-6 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Activity className="w-4 h-4 text-emerald-400" />
+                      Habits Adherence Rate (%)
+                    </h3>
+                    <p className="text-[11px] text-slate-400">% of days completed per habit</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                    Habit Matrix
+                  </span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={habitComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                      <XAxis dataKey="name" stroke="#64748B" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#64748B" fontSize={11} domain={[0, 100]} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
+                        formatter={(val, name, item) => [`${val}% (${item.payload.completedDays} days)`, 'Completion Rate']}
+                      />
+                      <Bar dataKey="successRate" radius={[6, 6, 0, 0]}>
+                        {habitComparisonData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 3: Sleep Rhythm Curve */}
+              <div className="p-6 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Moon className="w-4 h-4 text-indigo-400" />
+                      Daily Sleep Rhythm (Hours)
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Sleep recorded per night vs 8h target</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                    8h Benchmark
+                  </span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={dailyTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="monthSleepGrad" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366F1" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#6366F1" stopOpacity={0.0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                      <XAxis dataKey="day" stroke="#64748B" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#64748B" fontSize={11} domain={[0, 12]} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
+                        formatter={(val) => [`${val} hrs`, 'Sleep']}
+                        labelFormatter={(lbl) => `Day ${lbl} (${monthName})`}
+                      />
+                      <ReferenceLine y={8} stroke="#818CF8" strokeDasharray="4 4" label={{ value: '8h Target', fill: '#818CF8', fontSize: 10, position: 'insideTopRight' }} />
+                      <Area type="monotone" dataKey="sleep" stroke="#6366F1" strokeWidth={2.5} fillOpacity={1} fill="url(#monthSleepGrad)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Chart 4: Planned vs Actual Hours by Habit */}
+              <div className="p-6 bg-slate-900/60 rounded-2xl border border-slate-800 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-sky-400" />
+                      Planned vs Actual Execution Volume
+                    </h3>
+                    <p className="text-[11px] text-slate-400">Total target units vs recorded units</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                    Volume Comparison
+                  </span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={habitComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1E293B" />
+                      <XAxis dataKey="name" stroke="#64748B" fontSize={11} tickLine={false} />
+                      <YAxis stroke="#64748B" fontSize={11} tickLine={false} />
+                      <Tooltip 
+                        contentStyle={{ backgroundColor: '#0F172A', borderColor: '#334155', borderRadius: '12px', fontSize: '12px' }}
+                        formatter={(val, name, item) => [`${val} ${item.payload.unit}`, name === 'actualTotal' ? 'Actual' : 'Planned']}
+                      />
+                      <Bar dataKey="plannedTotal" fill="#38BDF8" radius={[4, 4, 0, 0]} name="Planned" />
+                      <Bar dataKey="actualTotal" fill="#10B981" radius={[4, 4, 0, 0]} name="Actual" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
             </div>
           </div>
