@@ -10,30 +10,41 @@ from app.schemas import WinterArcResponse
 router = APIRouter(prefix="/api/winter-arc", tags=["Winter Arc"])
 
 @router.get("", response_model=WinterArcResponse)
-def get_winter_arc_summary(db: Session = Depends(get_db)):
+def get_winter_arc_summary(year: Optional[int] = None, db: Session = Depends(get_db)):
     today = date.today()
+    target_year = year if year else today.year
 
-    # Load custom dates if present in Settings
-    start_setting = db.query(Setting).filter(Setting.key == "winter_arc_start").first()
-    end_setting = db.query(Setting).filter(Setting.key == "winter_arc_end").first()
-
-    start_d = date.fromisoformat(start_setting.value) if start_setting and start_setting.value else date(2026, 10, 1)
-    end_d = date.fromisoformat(end_setting.value) if end_setting and end_setting.value else date(2026, 12, 31)
+    start_d = date(target_year, 10, 1)
+    end_d = date(target_year, 12, 31)
 
     total_days = (end_d - start_d).days + 1
+
     if today < start_d:
+        status = "upcoming"
+        is_active_now = False
+        is_completed = False
+        days_until_start = (start_d - today).days
         days_elapsed = 0
         days_remaining = total_days
+        overall_progress_pct = 0.0
     elif today > end_d:
+        status = "completed"
+        is_active_now = False
+        is_completed = True
+        days_until_start = 0
         days_elapsed = total_days
         days_remaining = 0
+        overall_progress_pct = 100.0
     else:
+        status = "active"
+        is_active_now = True
+        is_completed = False
+        days_until_start = 0
         days_elapsed = (today - start_d).days + 1
         days_remaining = (end_d - today).days
+        overall_progress_pct = round((days_elapsed / total_days) * 100.0, 1) if total_days > 0 else 100.0
 
-    overall_progress_pct = round((days_elapsed / total_days) * 100.0, 1) if total_days > 0 else 100.0
-
-    # Query all logs within Winter Arc range
+    # Query all logs within Winter Arc range for target year
     logs = db.query(GoalLog).filter(GoalLog.log_date >= start_d, GoalLog.log_date <= end_d).all()
 
     planned_hours = 0.0
@@ -91,7 +102,7 @@ def get_winter_arc_summary(db: Session = Depends(get_db)):
             if g_obj:
                 best_habit_name = g_obj.name
 
-    # Most Improved Habit (comparison between first half and second half of logged period)
+    # Most Improved Habit
     most_improved_name = None
     max_improvement = -999.0
 
@@ -108,11 +119,15 @@ def get_winter_arc_summary(db: Session = Depends(get_db)):
                     most_improved_name = g_obj.name
 
     return WinterArcResponse(
+        year=target_year,
         start_date=start_d,
         end_date=end_d,
         total_days=total_days,
         days_elapsed=days_elapsed,
         days_remaining=days_remaining,
+        days_until_start=days_until_start,
+        status=status,
+        is_active_now=is_active_now,
         overall_progress_pct=overall_progress_pct,
         planned_hours=round(planned_hours, 1),
         actual_hours=round(actual_hours, 1),
@@ -121,5 +136,6 @@ def get_winter_arc_summary(db: Session = Depends(get_db)):
         best_month=best_month_name or "N/A",
         best_habit=best_habit_name or "N/A",
         most_improved_habit=most_improved_name or (best_habit_name or "N/A"),
-        is_completed=(today > end_d)
+        is_completed=is_completed
     )
+

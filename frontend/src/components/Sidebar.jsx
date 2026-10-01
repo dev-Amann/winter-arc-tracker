@@ -13,6 +13,10 @@ import {
 } from 'lucide-react';
 
 const Sidebar = () => {
+  const now = new Date();
+  const currentMonth = now.getMonth(); // 9 = October, 10 = November, 11 = December
+  const isWinterArcActive = currentMonth >= 9 && currentMonth <= 11;
+
   const navItems = [
     { name: 'Dashboard', path: '/', icon: LayoutDashboard },
     { name: 'Today', path: '/today', icon: CalendarCheck },
@@ -20,7 +24,13 @@ const Sidebar = () => {
     { name: 'Goals', path: '/goals', icon: Target },
     { name: 'Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'Calendar', path: '/calendar', icon: CalendarDays },
-    { name: 'Winter Arc', path: '/winter-arc', icon: Flame, badge: '2026' },
+    { 
+      name: 'Winter Arc', 
+      path: '/winter-arc', 
+      icon: Flame, 
+      badge: isWinterArcActive ? 'ACTIVE' : 'Oct 1',
+      badgeColor: isWinterArcActive ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 animate-pulse' : 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'
+    },
     { name: 'Settings', path: '/settings', icon: Settings },
   ];
 
@@ -33,7 +43,7 @@ const Sidebar = () => {
         </div>
         <div>
           <h1 className="font-bold text-lg text-white tracking-wide leading-none">WINTER ARC</h1>
-          <span className="text-xs text-cyan-400 font-medium tracking-wider uppercase">Tracker 2026</span>
+          <span className="text-xs text-cyan-400 font-medium tracking-wider uppercase">Lifetime Tracker</span>
         </div>
       </div>
 
@@ -58,7 +68,7 @@ const Sidebar = () => {
                 <span>{item.name}</span>
               </div>
               {item.badge && (
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className={`px-2 py-0.5 text-xs font-semibold rounded-full border ${item.badgeColor || 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30'}`}>
                   {item.badge}
                 </span>
               )}

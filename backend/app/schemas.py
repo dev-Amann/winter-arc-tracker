@@ -133,6 +133,10 @@ class DashboardStats(BaseModel):
     today_plan_count: int
     today_completed_count: int
     planned_vs_actual: Dict[str, Any]
+    winter_arc_year: int = 2026
+    winter_arc_active: bool = False
+    winter_arc_status: str = "upcoming"
+    winter_arc_days_left: int = 0
 
 # Analytics Schemas
 class PlannedVsActualItem(BaseModel):
@@ -169,11 +173,15 @@ class CalendarHeatmapItem(BaseModel):
 
 # Winter Arc Schema
 class WinterArcResponse(BaseModel):
+    year: int
     start_date: date
     end_date: date
     total_days: int
     days_elapsed: int
     days_remaining: int
+    days_until_start: int
+    status: str  # "active", "upcoming", "completed"
+    is_active_now: bool
     overall_progress_pct: float
     planned_hours: float
     actual_hours: float

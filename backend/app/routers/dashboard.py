@@ -80,17 +80,26 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
             total_planned_hours += l.target_value / 60.0
             total_actual_hours += l.actual_value / 60.0
 
-    # 7. Winter Arc 2026 progress
-    # Default Winter Arc: Oct 1, 2026 to Dec 31, 2026
-    wa_start_setting = db.query(Setting).filter(Setting.key == "winter_arc_start").first()
-    wa_end_setting = db.query(Setting).filter(Setting.key == "winter_arc_end").first()
-
-    wa_start = date.fromisoformat(wa_start_setting.value) if wa_start_setting and wa_start_setting.value else date(2026, 10, 1)
-    wa_end = date.fromisoformat(wa_end_setting.value) if wa_end_setting and wa_end_setting.value else date(2026, 12, 31)
+    # 7. Dynamic Winter Arc Mode (Oct 1 to Dec 31 of every year)
+    current_year = today.year
+    wa_start = date(current_year, 10, 1)
+    wa_end = date(current_year, 12, 31)
 
     if today < wa_start:
+        wa_status = "upcoming"
+        wa_active = False
+        wa_days_left = (wa_start - today).days
         overall_winter_arc_pct = 0.0
+    elif today > wa_end:
+        wa_status = "completed"
+        wa_active = False
+        wa_days_left = 0
+        wa_pcts = [pct for d, pct in daily_avg_by_date.items() if wa_start <= d <= wa_end]
+        overall_winter_arc_pct = round(sum(wa_pcts) / len(wa_pcts), 1) if wa_pcts else 0.0
     else:
+        wa_status = "active"
+        wa_active = True
+        wa_days_left = (wa_end - today).days
         wa_pcts = [pct for d, pct in daily_avg_by_date.items() if wa_start <= d <= min(today, wa_end)]
         overall_winter_arc_pct = round(sum(wa_pcts) / len(wa_pcts), 1) if wa_pcts else 0.0
 
@@ -116,5 +125,10 @@ def get_dashboard_summary(db: Session = Depends(get_db)):
             "actual_hours": round(total_actual_hours, 1),
             "achievement_pct": overall_ach_pct,
             "difference_hours": round(total_actual_hours - total_planned_hours, 1)
-        }
+        },
+        winter_arc_year=current_year,
+        winter_arc_active=wa_active,
+        winter_arc_status=wa_status,
+        winter_arc_days_left=wa_days_left
     )
+

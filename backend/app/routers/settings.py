@@ -8,8 +8,9 @@ from app.schemas import SettingUpdate, SettingResponse
 router = APIRouter(prefix="/api/settings", tags=["Settings"])
 
 DEFAULT_SETTINGS = {
-    "winter_arc_start": "2026-10-01",
-    "winter_arc_end": "2026-12-31",
+    "winter_arc_rule": "Oct 1 - Dec 31 (Annual Auto-Mode)",
+    "winter_arc_start_day": "10-01",
+    "winter_arc_end_day": "12-31",
     "theme": "dark",
     "streak_target_pct": "80"
 }

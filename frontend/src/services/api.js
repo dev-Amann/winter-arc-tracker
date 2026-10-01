@@ -105,8 +105,8 @@ export const getPeriodComparison = async (params = {}) => {
   return response.data;
 };
 
-export const getWinterArc = async () => {
-  const response = await api.get('/winter-arc');
+export const getWinterArc = async (year) => {
+  const response = await api.get('/winter-arc', { params: year ? { year } : {} });
   return response.data;
 };
 

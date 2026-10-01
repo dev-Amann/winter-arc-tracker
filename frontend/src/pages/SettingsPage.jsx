@@ -108,42 +108,34 @@ const SettingsPage = () => {
         </div>
       )}
 
-      {/* 1. Winter Arc Date Range Configuration */}
-      <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-6">
-        <h3 className="text-lg font-bold text-white tracking-wide">WINTER ARC DATES CONFIGURATION</h3>
+      {/* 1. Winter Arc Protocol Overview */}
+      <div className="glass-card p-8 rounded-3xl border border-slate-800 space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-bold text-white tracking-wide">WINTER ARC ANNUAL PROTOCOL</h3>
+          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+            Lifetime Automatic Engine
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed max-w-3xl">
+          Winter Arc is a specialized seasonal high-discipline mode in this lifetime tracking system. It <strong>automatically activates every year on October 1st</strong> and concludes on <strong>December 31st</strong> (92 consecutive days). Outside of this window, your habit tracking, calendar, streak counter, and analytics remain fully active year-round in off-season mode.
+        </p>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Winter Arc Start Date
-            </label>
-            <input 
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500"
-            />
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+          <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ANNUAL ACTIVATION</span>
+            <div className="text-lg font-bold text-cyan-400 mt-1">October 1st (Every Year)</div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
-              Winter Arc End Date
-            </label>
-            <input 
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-2.5 text-white text-sm focus:outline-none focus:border-cyan-500"
-            />
+          <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">ANNUAL CONCLUSION</span>
+            <div className="text-lg font-bold text-rose-400 mt-1">December 31st (Every Year)</div>
+          </div>
+
+          <div className="p-4 bg-slate-900/80 rounded-2xl border border-slate-800">
+            <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">PROTOCOL DURATION</span>
+            <div className="text-lg font-bold text-white mt-1">92 Continuous Days</div>
           </div>
         </div>
-
-        <button
-          onClick={handleSaveDates}
-          className="px-6 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20"
-        >
-          Save Winter Arc Dates
-        </button>
       </div>
 
       {/* 2. Custom Categories Manager */}
